@@ -1,8 +1,8 @@
 import os
 import json
-import anthropic
+from groq import AsyncGroq
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 SYSTEM_PROMPT = """You are a cybersecurity expert specializing in phishing email detection and analysis.
 You will be given parsed email data including headers, body text, URLs, and already-detected indicators.
@@ -33,20 +33,19 @@ Be precise. Return ONLY the JSON — no markdown, no explanation outside the JSO
 
 
 async def analyze_email(parsed_email: dict) -> dict:
-    if not ANTHROPIC_API_KEY:
+    if not GROQ_API_KEY:
         return {
             "status": "not_configured",
             "verdict": "UNKNOWN",
             "confidence": 0,
-            "reasoning": "AI analysis unavailable: ANTHROPIC_API_KEY not set.",
+            "reasoning": "AI analysis unavailable: GROQ_API_KEY not set.",
             "tactics": [],
             "red_flags": [],
-            "recommendation": "Configure your Anthropic API key to enable AI analysis.",
+            "recommendation": "Configure your Groq API key to enable AI analysis.",
         }
 
-    client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+    client = AsyncGroq(api_key=GROQ_API_KEY)
 
-    # Build a concise summary for the AI
     email_summary = {
         "from": parsed_email["headers"].get("from"),
         "reply_to": parsed_email["headers"].get("reply_to"),
@@ -67,20 +66,16 @@ async def analyze_email(parsed_email: dict) -> dict:
     user_prompt = f"Analyze this email:\n\n{json.dumps(email_summary, indent=2)}"
 
     try:
-        message = await client.messages.create(
-            model="claude-sonnet-4-6",
+        response = await client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
             max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_prompt}],
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format={"type": "json_object"},
         )
-        raw = message.content[0].text.strip()
-
-        # Strip markdown code fences if present
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
+        raw = response.choices[0].message.content.strip()
 
         result = json.loads(raw)
         result["status"] = "ok"
