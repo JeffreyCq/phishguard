@@ -8,6 +8,7 @@ services:
       - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY}
       - URLSCAN_API_KEY=${URLSCAN_API_KEY}
       - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY}
+      - PUBLIC_API_KEY=${PUBLIC_API_KEY}
     restart: unless-stopped
 
   frontend:

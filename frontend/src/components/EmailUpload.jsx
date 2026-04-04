@@ -59,7 +59,7 @@ export default function EmailUpload({ onResult, onLoading }) {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 mb-4">
           <ShieldAlert className="w-8 h-8 text-indigo-400" />
         </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">PhishGuard</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight">MailDefender</h1>
         <p className="text-slate-400 mt-2 text-sm">AI-powered phishing email analyzer</p>
       </div>
 

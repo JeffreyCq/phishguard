@@ -33,7 +33,7 @@ export default function App() {
             <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center">
               <Shield className="w-4 h-4 text-indigo-400" />
             </div>
-            <span className="font-bold text-white text-sm tracking-tight">PhishGuard</span>
+            <span className="font-bold text-white text-sm tracking-tight">MailDefender</span>
             <span className="text-slate-600 text-xs hidden sm:block">Email Threat Analyzer</span>
           </div>
           {result && (
