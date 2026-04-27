@@ -53,9 +53,27 @@ async def _ensure_ollama_model():
             ) as r:
                 async for _ in r.content:
                     pass  # consume the progress stream
-            logger.info("Model %s ready", OLLAMA_MODEL)
+            logger.info("Model %s downloaded — warming up (loading into RAM)...", OLLAMA_MODEL)
         except Exception as exc:
             logger.warning("Model pull failed (may already be cached): %s", exc)
+
+        # Send a dummy inference request so the model loads into RAM now,
+        # not on the first real user request (which would time out on cold start).
+        try:
+            async with session.post(
+                f"{OLLAMA_BASE_URL}/api/chat",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "messages": [{"role": "user", "content": "hi"}],
+                    "stream": False,
+                    "options": {"num_predict": 1},
+                },
+                timeout=aiohttp.ClientTimeout(total=360),
+            ) as r:
+                await r.read()
+            logger.info("Model %s warm and ready", OLLAMA_MODEL)
+        except Exception as exc:
+            logger.warning("Warmup request failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------

@@ -61,7 +61,7 @@ async def analyze_email(parsed_email: dict) -> dict:
             async with session.post(
                 f"{OLLAMA_BASE_URL}/api/chat",
                 json=payload,
-                timeout=aiohttp.ClientTimeout(total=120),
+                timeout=aiohttp.ClientTimeout(total=360),
             ) as resp:
                 if resp.status != 200:
                     text = await resp.text()
