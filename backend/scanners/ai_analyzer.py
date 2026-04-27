@@ -5,35 +5,13 @@ import aiohttp
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
 OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL",    "qwen2.5:3b")
 
-SYSTEM_PROMPT = """You are a cybersecurity expert specializing in email threat analysis.
-Analyze the provided email data and return ONLY a valid JSON object with this exact structure:
-{
-  "verdict": "PHISHING" | "SUSPICIOUS" | "LIKELY_SAFE" | "SAFE",
-  "confidence": <integer 0-100>,
-  "reasoning": "<2-3 sentence plain English explanation>",
-  "tactics": ["<tactic1>"],
-  "red_flags": ["<specific concern 1>"],
-  "recommendation": "<one sentence action for the user>",
+SYSTEM_PROMPT = """Cybersecurity expert. Analyze email data. Return ONLY valid JSON:
+{"verdict":"PHISHING"|"SUSPICIOUS"|"LIKELY_SAFE"|"SAFE","confidence":<0-100>,"reasoning":"<2 sentences>","tactics":["<tactic>"],"red_flags":["<flag>"],"recommendation":"<1 sentence>","spam_verdict":"SPAM"|"LIKELY_SPAM"|"NOT_SPAM","spam_confidence":<0-100>,"spam_signals":["<signal>"]}
 
-  "spam_verdict": "SPAM" | "LIKELY_SPAM" | "NOT_SPAM",
-  "spam_confidence": <integer 0-100>,
-  "spam_signals": ["<signal1>"]
-}
-
-PHISHING tactics (use exact strings): urgency, fear, impersonation, credential_harvesting,
-brand_spoofing, prize_scam, invoice_fraud, malware_delivery, url_obfuscation, authority
-
-SPAM signals (use exact strings when applicable): bulk_headers, tracking_pixel,
-mass_marketing_platform, unsubscribe_link, promotional_language, generic_greeting,
-unsolicited_contact, url_tracking, suspicious_sender_domain, excessive_images
-
-IMPORTANT DISTINCTIONS:
-- PHISHING = malicious intent to steal data/credentials/money. Dangerous.
-- SPAM = unsolicited commercial or irrelevant email. Annoying but not necessarily dangerous.
-- An email can be SPAM without being PHISHING, or both at the same time.
-- A legitimate newsletter is NOT_SPAM even if unsolicited.
-
-Return ONLY the JSON — no markdown, no text outside the JSON object."""
+Phishing tactics: urgency,fear,impersonation,credential_harvesting,brand_spoofing,prize_scam,invoice_fraud,malware_delivery,url_obfuscation,authority
+Spam signals: bulk_headers,tracking_pixel,mass_marketing_platform,unsubscribe_link,promotional_language,generic_greeting,unsolicited_contact,url_tracking,suspicious_sender_domain
+PHISHING=malicious/dangerous. SPAM=unsolicited/annoying. Both can coexist.
+Return ONLY the JSON object."""
 
 
 async def analyze_email(parsed_email: dict) -> dict:
@@ -45,13 +23,13 @@ async def analyze_email(parsed_email: dict) -> dict:
         "dkim":                   parsed_email["headers"].get("dkim"),
         "dmarc":                  parsed_email["headers"].get("dmarc"),
         "from_reply_to_mismatch": parsed_email["headers"].get("from_reply_to_mismatch"),
-        "urls_found":             parsed_email.get("urls", [])[:10],
+        "urls_found":             parsed_email.get("urls", [])[:7],       # was 10
         "attachments": [
             {"filename": a["filename"], "suspicious": a["suspicious"]}
             for a in parsed_email.get("attachments", [])
         ],
         "indicators_detected": parsed_email.get("indicators", []),
-        "body_text":           parsed_email.get("body_text", "")[:2000],
+        "body_text":           parsed_email.get("body_text", "")[:1200],  # was 2000
     }
 
     user_prompt = f"Analyze this email for phishing AND spam:\n\n{json.dumps(email_summary, indent=2)}"
@@ -68,7 +46,9 @@ async def analyze_email(parsed_email: dict) -> dict:
                 "format": "json",
                 "options": {
                     "temperature": 0.1,
-                    "num_predict": 768,
+                    "num_predict": 400,   # JSON output is ~250-350 tokens
+                    "num_ctx":     2048,  # ← biggest win: don't reserve 32k context
+                    "num_batch":   512,   # larger batch = faster prompt processing
                 },
             }
             async with session.post(

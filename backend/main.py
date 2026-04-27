@@ -66,7 +66,7 @@ async def _ensure_ollama_model():
                     "model": OLLAMA_MODEL,
                     "messages": [{"role": "user", "content": "hi"}],
                     "stream": False,
-                    "options": {"num_predict": 1},
+                    "options": {"num_predict": 1, "num_ctx": 2048},
                 },
                 timeout=aiohttp.ClientTimeout(total=360),
             ) as r:
