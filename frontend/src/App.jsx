@@ -189,7 +189,7 @@ export default function App() {
             {/* Credit */}
             <div className="text-center sm:text-left">
               <p className="text-sm text-slate-400">
-                Desarrollado por{' '}
+                Built by{' '}
                 <span className="text-white font-semibold">Jeffrey A. Cedeno Q.</span>
               </p>
               <p className="text-xs text-slate-600 mt-0.5">
