@@ -6,14 +6,13 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     environment:
-      - OLLAMA_NUM_PARALLEL=1        # one request at a time to save RAM
+      - OLLAMA_NUM_PARALLEL=1        # one request at a time
       - OLLAMA_MAX_LOADED_MODELS=1   # keep only one model in memory
-      - OLLAMA_KEEP_ALIVE=10m        # unload model after 10 min idle
+      - OLLAMA_KEEP_ALIVE=-1         # never unload — eliminates cold start
+      - OLLAMA_NUM_THREADS=0         # 0 = use all CPU cores automatically
+      - OLLAMA_FLASH_ATTENTION=1     # faster attention on CPU
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 4G                 # qwen2.5:3b uses ~2 GB; cap at 4 GB
+    # No memory limit — server has 16 GB, model uses ~2 GB
 
   # ─── FastAPI backend ─────────────────────────────────────────────────────
   backend:
