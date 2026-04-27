@@ -1,19 +1,61 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Upload, FileText, Loader2, ShieldAlert } from 'lucide-react'
 
+// Estimated analysis stages with approximate timing
+const STAGES = [
+  { until: 12,  label: 'Parsing email structure...' },
+  { until: 28,  label: 'Extracting URLs and IPs...' },
+  { until: 55,  label: 'Checking threat intelligence...' },
+  { until: 82,  label: 'Running AI analysis...' },
+  { until: 93,  label: 'Generating report...' },
+  { until: 100, label: 'Almost there...' },
+]
+
+function getStageLabel(progress) {
+  return STAGES.find((s) => progress < s.until)?.label ?? 'Finalizing...'
+}
+
 export default function EmailUpload({ onResult, onLoading }) {
-  const [mode, setMode] = useState('file') // 'file' | 'paste'
-  const [rawText, setRawText] = useState('')
+  const [mode,     setMode]     = useState('file')
+  const [rawText,  setRawText]  = useState('')
   const [dragging, setDragging] = useState(false)
   const [filename, setFilename] = useState(null)
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const fileRef = useRef()
+  const [error,    setError]    = useState(null)
+  const [loading,  setLoading]  = useState(false)
+  const [progress, setProgress] = useState(0)
+  const fileRef     = useRef()
+  const intervalRef = useRef(null)
+
+  // Advance progress bar while loading
+  useEffect(() => {
+    if (loading) {
+      setProgress(0)
+      intervalRef.current = setInterval(() => {
+        setProgress((prev) => {
+          // Slow down as we approach 93% — never auto-complete to 100
+          const increment = prev < 30 ? 2.5
+                          : prev < 55 ? 1.2
+                          : prev < 80 ? 0.6
+                          : prev < 93 ? 0.15
+                          : 0
+          return Math.min(prev + increment, 93)
+        })
+      }, 400)
+    } else {
+      clearInterval(intervalRef.current)
+      // Jump to 100% on success then reset
+      if (progress > 0) {
+        setProgress(100)
+        setTimeout(() => setProgress(0), 600)
+      }
+    }
+    return () => clearInterval(intervalRef.current)
+  }, [loading])
 
   const submit = async (formData) => {
     setError(null)
     setLoading(true)
-    onLoading(true)
+    onLoading?.(true)
     try {
       const res = await fetch('/analyze', { method: 'POST', body: formData })
       if (!res.ok) {
@@ -26,7 +68,7 @@ export default function EmailUpload({ onResult, onLoading }) {
       setError(e.message)
     } finally {
       setLoading(false)
-      onLoading(false)
+      onLoading?.(false)
     }
   }
 
@@ -69,10 +111,11 @@ export default function EmailUpload({ onResult, onLoading }) {
           <button
             key={m}
             onClick={() => setMode(m)}
+            disabled={loading}
             className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
               mode === m
                 ? 'bg-indigo-600 text-white shadow'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-400 hover:text-slate-200 disabled:opacity-40'
             }`}
           >
             {m === 'file' ? 'Upload .eml File' : 'Paste Raw Email'}
@@ -83,7 +126,8 @@ export default function EmailUpload({ onResult, onLoading }) {
       {mode === 'file' ? (
         <div
           className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all
-            ${dragging ? 'drag-over' : 'border-slate-700 hover:border-slate-500 bg-slate-900/30'}`}
+            ${dragging ? 'drag-over' : 'border-slate-700 hover:border-slate-500 bg-slate-900/30'}
+            ${loading ? 'pointer-events-none opacity-60' : ''}`}
           onClick={() => fileRef.current.click()}
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
@@ -96,13 +140,12 @@ export default function EmailUpload({ onResult, onLoading }) {
             className="hidden"
             onChange={(e) => handleFile(e.target.files[0])}
           />
-          {loading ? (
-            <Loader2 className="w-10 h-10 text-indigo-400 mx-auto animate-spin" />
-          ) : (
-            <Upload className="w-10 h-10 text-slate-500 mx-auto" />
-          )}
+          {loading
+            ? <Loader2 className="w-10 h-10 text-indigo-400 mx-auto animate-spin" />
+            : <Upload className="w-10 h-10 text-slate-500 mx-auto" />
+          }
           <p className="mt-4 text-slate-300 font-medium">
-            {filename ? filename : 'Drop your .eml file here'}
+            {filename ?? 'Drop your .eml file here'}
           </p>
           <p className="text-slate-500 text-sm mt-1">or click to browse — .eml, .msg, .txt</p>
         </div>
@@ -113,9 +156,10 @@ export default function EmailUpload({ onResult, onLoading }) {
             onChange={(e) => setRawText(e.target.value)}
             placeholder="Paste the full raw email here (including headers)..."
             rows={12}
+            disabled={loading}
             className="w-full rounded-xl bg-slate-900 border border-slate-700 text-slate-200
               placeholder-slate-500 p-4 text-sm font-mono resize-none focus:outline-none
-              focus:border-indigo-500 transition-colors"
+              focus:border-indigo-500 transition-colors disabled:opacity-60"
           />
           <button
             onClick={handlePaste}
@@ -123,8 +167,36 @@ export default function EmailUpload({ onResult, onLoading }) {
             className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50
               text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
           >
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</> : <><FileText className="w-4 h-4" /> Analyze Email</>}
+            {loading
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</>
+              : <><FileText className="w-4 h-4" /> Analyze Email</>
+            }
           </button>
+        </div>
+      )}
+
+      {/* ── Progress bar ── */}
+      {loading && (
+        <div className="mt-5 space-y-2">
+          {/* Track */}
+          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{
+                width: `${progress}%`,
+                background: 'linear-gradient(90deg, #6366f1, #818cf8)',
+              }}
+            />
+          </div>
+          {/* Label + percentage */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-slate-500 animate-pulse">
+              {getStageLabel(progress)}
+            </span>
+            <span className="text-xs text-slate-600 font-mono tabular-nums">
+              {Math.round(progress)}%
+            </span>
+          </div>
         </div>
       )}
 
