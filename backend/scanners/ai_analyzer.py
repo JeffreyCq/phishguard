@@ -1,13 +1,12 @@
 import os
 import json
-from groq import AsyncGroq
+import aiohttp
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 
-SYSTEM_PROMPT = """You are a cybersecurity expert specializing in phishing email detection and analysis.
-You will be given parsed email data including headers, body text, URLs, and already-detected indicators.
-
-Analyze this email and return ONLY a valid JSON object with this exact structure:
+SYSTEM_PROMPT = """You are a cybersecurity expert specializing in phishing email detection.
+Analyze the provided email data and return ONLY a valid JSON object with this exact structure:
 {
   "verdict": "PHISHING" | "SUSPICIOUS" | "LIKELY_SAFE" | "SAFE",
   "confidence": <integer 0-100>,
@@ -17,35 +16,14 @@ Analyze this email and return ONLY a valid JSON object with this exact structure
   "recommendation": "<one sentence action for the user>"
 }
 
-Possible tactics to detect (use exact strings when applicable):
-- "urgency" (pressure to act fast)
-- "fear" (threatens consequences)
-- "impersonation" (pretends to be a trusted entity)
-- "credential_harvesting" (asks for login/password)
-- "brand_spoofing" (mimics known brand)
-- "prize_scam" (fake prize/reward)
-- "invoice_fraud" (fake invoice)
-- "malware_delivery" (attachment-based attack)
-- "url_obfuscation" (hides true destination)
-- "authority" (fake official/government entity)
+Tactics to detect (use exact strings when applicable):
+urgency, fear, impersonation, credential_harvesting, brand_spoofing,
+prize_scam, invoice_fraud, malware_delivery, url_obfuscation, authority
 
-Be precise. Return ONLY the JSON — no markdown, no explanation outside the JSON."""
+Return ONLY the JSON — no markdown, no text outside the JSON object."""
 
 
 async def analyze_email(parsed_email: dict) -> dict:
-    if not GROQ_API_KEY:
-        return {
-            "status": "not_configured",
-            "verdict": "UNKNOWN",
-            "confidence": 0,
-            "reasoning": "AI analysis unavailable: GROQ_API_KEY not set.",
-            "tactics": [],
-            "red_flags": [],
-            "recommendation": "Configure your Groq API key to enable AI analysis.",
-        }
-
-    client = AsyncGroq(api_key=GROQ_API_KEY)
-
     email_summary = {
         "from": parsed_email["headers"].get("from"),
         "reply_to": parsed_email["headers"].get("reply_to"),
@@ -54,34 +32,61 @@ async def analyze_email(parsed_email: dict) -> dict:
         "dkim": parsed_email["headers"].get("dkim"),
         "dmarc": parsed_email["headers"].get("dmarc"),
         "from_reply_to_mismatch": parsed_email["headers"].get("from_reply_to_mismatch"),
-        "urls_found": parsed_email.get("urls", [])[:15],
+        "urls_found": parsed_email.get("urls", [])[:10],
         "attachments": [
             {"filename": a["filename"], "suspicious": a["suspicious"]}
             for a in parsed_email.get("attachments", [])
         ],
         "indicators_detected": parsed_email.get("indicators", []),
-        "body_text": parsed_email.get("body_text", "")[:3000],
+        "body_text": parsed_email.get("body_text", "")[:2000],
     }
 
-    user_prompt = f"Analyze this email:\n\n{json.dumps(email_summary, indent=2)}"
+    user_prompt = f"Analyze this email for phishing:\n\n{json.dumps(email_summary, indent=2)}"
 
     try:
-        response = await client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            max_tokens=1024,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            response_format={"type": "json_object"},
-        )
-        raw = response.choices[0].message.content.strip()
+        async with aiohttp.ClientSession() as session:
+            payload = {
+                "model": OLLAMA_MODEL,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "stream": False,
+                "format": "json",
+                "options": {
+                    "temperature": 0.1,
+                    "num_predict": 512,
+                },
+            }
+            async with session.post(
+                f"{OLLAMA_BASE_URL}/api/chat",
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=120),
+            ) as resp:
+                if resp.status != 200:
+                    text = await resp.text()
+                    return _error(f"Ollama returned {resp.status}: {text[:200]}")
+                data = await resp.json()
 
+        raw = data["message"]["content"].strip()
         result = json.loads(raw)
         result["status"] = "ok"
         return result
 
     except json.JSONDecodeError as e:
-        return {"status": "error", "error": f"Failed to parse AI response: {e}", "verdict": "UNKNOWN", "confidence": 0}
+        return _error(f"Failed to parse AI response: {e}")
     except Exception as e:
-        return {"status": "error", "error": str(e), "verdict": "UNKNOWN", "confidence": 0}
+        return _error(str(e))
+
+
+def _error(msg: str) -> dict:
+    return {
+        "status": "error",
+        "error": msg,
+        "verdict": "UNKNOWN",
+        "confidence": 0,
+        "reasoning": "",
+        "tactics": [],
+        "red_flags": [],
+        "recommendation": "",
+    }
