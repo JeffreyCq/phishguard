@@ -77,7 +77,7 @@ export default function App() {
         {view === 'scanner' && (
           <>
             {!result ? (
-              <EmailUpload onResult={setResult} />
+              <EmailUpload onResult={setResult} onLoading={() => {}} />
             ) : (
               <div className="space-y-6 fade-up">
                 {/* Top row: score + summary */}
