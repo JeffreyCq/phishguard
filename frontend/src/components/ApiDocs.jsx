@@ -88,7 +88,7 @@ function ResponseField({ field, type, description }) {
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function ApiDocs({ scanAddress }) {
-  const address = scanAddress || 'scan@yourdomain.com'
+  const address = scanAddress || 'scan@maildefender.xyz'
 
   const navItems = [
     { id: 'overview',    label: 'Overview' },
@@ -151,7 +151,7 @@ export default function ApiDocs({ scanAddress }) {
             </div>
             <div className="mt-4 flex items-center gap-2 text-sm text-slate-400">
               <span className="text-slate-500">Base URL</span>
-              <code className="text-indigo-300 font-mono">https://yourdomain.com</code>
+              <code className="text-indigo-300 font-mono">https://maildefender.xyz</code>
             </div>
           </Card>
         </Section>
@@ -165,7 +165,7 @@ export default function ApiDocs({ scanAddress }) {
               The web UI (<code className="text-indigo-300">/analyze</code>) has no authentication.
             </p>
             <CodeBlock>
-{`curl -X POST https://yourdomain.com/api/v1/scan \\
+{`curl -X POST https://maildefender.xyz/api/v1/scan \\
   -H "X-API-Key: YOUR_API_KEY" \\
   -F "raw_email=<email.txt"`}
             </CodeBlock>
@@ -280,6 +280,10 @@ export default function ApiDocs({ scanAddress }) {
                   <ResponseField field="auth.dkim"      type="string"    description="DKIM result: pass · fail · none" />
                   <ResponseField field="auth.dmarc"     type="string"    description="DMARC result: pass · fail · none" />
                   <ResponseField field="auth.from_reply_to_mismatch" type="boolean" description="true if From and Reply-To use different domains." />
+                  <tr><td colSpan={3} className="pt-4 pb-1"><p className="text-xs text-slate-500 uppercase tracking-wide">Spam Analysis</p></td></tr>
+                  <ResponseField field="spam_verdict"    type="string"   description="SPAM · LIKELY_SPAM · NOT_SPAM — independent from phishing verdict." />
+                  <ResponseField field="spam_confidence" type="int 0–100" description="AI confidence in the spam verdict." />
+                  <ResponseField field="spam_signals"    type="string[]" description="Detected spam signals: bulk_headers, tracking_pixel, mass_marketing_platform, unsubscribe_link, promotional_language, generic_greeting, unsolicited_contact, url_tracking, suspicious_sender_domain, excessive_images." />
                 </tbody>
               </table>
             </div>
@@ -348,7 +352,7 @@ export default function ApiDocs({ scanAddress }) {
                 <div><span className="text-slate-600">SMTP_PORT=</span><span className="text-green-400">587</span></div>
                 <div><span className="text-slate-600">SMTP_USER=</span><span className="text-green-400">resend</span></div>
                 <div><span className="text-slate-600">SMTP_PASSWORD=</span><span className="text-green-400">re_your_api_key</span></div>
-                <div><span className="text-slate-600">SMTP_FROM=</span><span className="text-green-400">scan@yourdomain.com</span></div>
+                <div><span className="text-slate-600">SMTP_FROM=</span><span className="text-green-400">scan@maildefender.xyz</span></div>
               </div>
             </div>
           </Card>
@@ -361,12 +365,12 @@ export default function ApiDocs({ scanAddress }) {
             <p className="text-sm font-medium text-slate-200 mb-1">curl</p>
             <CodeBlock>
 {`# Analyze a saved .eml file
-curl -X POST https://yourdomain.com/api/v1/scan \\
+curl -X POST https://maildefender.xyz/api/v1/scan \\
   -H "X-API-Key: YOUR_API_KEY" \\
   -F "raw_email=<suspicious.eml"
 
 # Paste raw email inline
-curl -X POST https://yourdomain.com/api/v1/scan \\
+curl -X POST https://maildefender.xyz/api/v1/scan \\
   -H "X-API-Key: YOUR_API_KEY" \\
   -F 'raw_email=From: attacker@evil.com
 To: victim@company.com
@@ -386,7 +390,7 @@ with open("suspicious.eml", "r") as f:
     raw_email = f.read()
 
 response = requests.post(
-    "https://yourdomain.com/api/v1/scan",
+    "https://maildefender.xyz/api/v1/scan",
     headers={"X-API-Key": "YOUR_API_KEY"},
     data={"raw_email": raw_email},
 )
@@ -407,7 +411,7 @@ if result["tactics"]:
 {`const form = new FormData();
 form.append('raw_email', rawEmailString);
 
-const res = await fetch('https://yourdomain.com/api/v1/scan', {
+const res = await fetch('https://maildefender.xyz/api/v1/scan', {
   method: 'POST',
   headers: { 'X-API-Key': 'YOUR_API_KEY' },
   body: form,
@@ -444,7 +448,10 @@ console.log(\`\${level} (\${score}/100) — \${verdict}\`);`}
     "dkim": "none",
     "dmarc": "fail",
     "from_reply_to_mismatch": true
-  }
+  },
+  "spam_verdict": "SPAM",
+  "spam_confidence": 78,
+  "spam_signals": ["bulk_headers", "tracking_pixel", "url_tracking", "unsubscribe_link"]
 }`}
             </CodeBlock>
           </Card>
