@@ -1,0 +1,42 @@
+# MailDefender — Configuración de empresa
+# ─────────────────────────────────────────────────────────────────────────────
+# Completa este archivo con los datos de tu empresa para que el modelo
+# detecte mejor ataques de Whaling y Spear Phishing dirigidos a tus ejecutivos.
+#
+# Todos los campos son OPCIONALES. El modelo funciona sin este archivo,
+# pero con él es significativamente más preciso para amenazas dirigidas.
+# ─────────────────────────────────────────────────────────────────────────────
+
+company:
+  name: "Acme Corporation"       # Nombre de tu empresa
+  domain: "acme.com"             # Dominio corporativo (sin https://)
+
+# Lista de ejecutivos C-Level y personas de alto valor
+executives:
+  - name: "John Smith"
+    aliases:                     # Variaciones del nombre (opcional)
+      - "J. Smith"
+      - "Johnny Smith"
+    title: "CEO"                 # CEO, CFO, CTO, COO, CISO, President, Chairman, VP, Director
+    email: "jsmith@acme.com"    # Email corporativo (opcional)
+
+  - name: "María García"
+    aliases:
+      - "Maria Garcia"
+      - "M. García"
+    title: "CFO"
+    email: "mgarcia@acme.com"
+
+  - name: "Robert Chen"
+    aliases:
+      - "Bob Chen"
+      - "R. Chen"
+    title: "CTO"
+    email: "rchen@acme.com"
+
+# Departamentos sensibles (opcional — para futuras versiones)
+# sensitive_departments:
+#   - "Finance"
+#   - "Legal"
+#   - "IT Security"
+#   - "HR"

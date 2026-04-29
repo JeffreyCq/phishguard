@@ -15,6 +15,7 @@ from typing import Optional
 from parsers.email_parser import parse_email
 from scanners import abuseipdb, virustotal
 from scanners.ai_analyzer import analyze_email, OLLAMA_BASE_URL, OLLAMA_MODEL
+from scanners.ml_classifier import classify_email
 from scoring.risk_score import calculate_score
 from email_receiver import set_analysis_callback, start_smtp_server
 from email_sender import send_analysis_reply
@@ -176,6 +177,11 @@ async def _run_analysis(raw: bytes | str) -> dict:
             *[virustotal.scan_ip(session, ip) for ip in ips],
             *[abuseipdb.check_ip(session, ip) for ip in ips],
             analyze_email(parsed),
+            classify_email(
+                subject=parsed.get("headers", {}).get("subject", ""),
+                sender=parsed.get("headers", {}).get("from", ""),
+                body=parsed.get("body", ""),
+            ),
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -191,6 +197,11 @@ async def _run_analysis(raw: bytes | str) -> dict:
     ai_result = results[idx] if idx < len(results) else {}
     if isinstance(ai_result, Exception):
         ai_result = {"status": "error", "error": str(ai_result), "verdict": "UNKNOWN", "confidence": 0}
+    idx += 1
+
+    ml_result = results[idx] if idx < len(results) else {}
+    if isinstance(ml_result, Exception):
+        ml_result = {"status": "error", "threat_type": "unknown"}
 
     risk = calculate_score(parsed, vt_url_results, vt_ip_results, abuse_results, ai_result)
 
@@ -200,6 +211,7 @@ async def _run_analysis(raw: bytes | str) -> dict:
         "vt_ip_results":   vt_ip_results,
         "abuse_results":   abuse_results,
         "ai_result":       ai_result,
+        "ml_result":       ml_result,
         "risk":            risk,
         "urls":            urls,
         "ips":             ips,
@@ -262,13 +274,14 @@ async def analyze(
     ips    = data["ips"]
 
     return {
-        "risk":        data["risk"],
-        "headers":     parsed["headers"],
-        "urls":        _annotate_urls(urls, data["vt_url_results"]),
-        "ips":         _annotate_ips(ips, data["vt_ip_results"], data["abuse_results"]),
-        "attachments": parsed.get("attachments", []),
-        "indicators":  parsed.get("indicators", []),
-        "ai_analysis": data["ai_result"],
+        "risk":           data["risk"],
+        "headers":        parsed["headers"],
+        "urls":           _annotate_urls(urls, data["vt_url_results"]),
+        "ips":            _annotate_ips(ips, data["vt_ip_results"], data["abuse_results"]),
+        "attachments":    parsed.get("attachments", []),
+        "indicators":     parsed.get("indicators", []),
+        "ai_analysis":    data["ai_result"],
+        "ml_classifier":  data["ml_result"],
     }
 
 
@@ -346,6 +359,7 @@ async def public_scan(
         "red_flags":      ai.get("red_flags", []),
         "recommendation": ai.get("recommendation", ""),
         "indicators":     data["parsed"].get("indicators", []),
+        "ml_classifier":  data["ml_result"],
         "urls_total":     len(data["urls"]),
         "urls_flagged":   flagged_urls,
         "ips_flagged":    flagged_ips,

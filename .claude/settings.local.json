@@ -2,7 +2,26 @@
   "permissions": {
     "allow": [
       "Bash(python3 -c \"import secrets; print\\(secrets.token_hex\\(32\\)\\)\")",
-      "Bash(node -e \"const crypto = require\\(''crypto''\\); console.log\\(crypto.randomBytes\\(32\\).toString\\(''hex''\\)\\);\")"
+      "Bash(node -e \"const crypto = require\\(''crypto''\\); console.log\\(crypto.randomBytes\\(32\\).toString\\(''hex''\\)\\);\")",
+      "Bash(openssl genpkey *)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git commit -m 'fix: increase Ollama timeout to 360s and add model warmup on startup *)",
+      "Bash(cp docker-compose.yml docker-compose.yaml)",
+      "Bash(git commit -m 'fix: add docker-compose.yaml alias for Coolify compatibility *)",
+      "Bash(git commit -m 'fix: increase nginx proxy timeout to 300s for slow Ollama inference *)",
+      "Bash(git commit -m 'fix: pass onLoading prop to EmailUpload to prevent infinite loading state *)",
+      "Bash(git commit -m 'feat: add animated progress bar with analysis stage labels *)",
+      "Bash(git commit -m 'docs: rewrite README for portfolio and repo documentation *)",
+      "Bash(git commit *)",
+      "PowerShell(Rename-Item -Path \"D:\\\\Dev-Projects\\\\HoneyMind\" -NewName \"HiddenPot\")",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(git init *)",
+      "Bash(node scripts/generate-icons.js)",
+      "Bash(gh repo *)"
     ]
   }
 }

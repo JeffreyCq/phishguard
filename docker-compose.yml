@@ -41,8 +41,23 @@ services:
       # SMTP inbound listener
       - SMTP_LISTEN_PORT=2525
       - SMTP_LISTEN_HOST=0.0.0.0
+    environment:
+      - ML_CLASSIFIER_URL=http://ml-classifier:8001
     depends_on:
       - ollama
+      - ml-classifier
+    restart: unless-stopped
+
+  # ─── ML Classifier (DistilBERT ONNX) ────────────────────────────────────────
+  ml-classifier:
+    build: ./ml
+    expose:
+      - "8001"
+    volumes:
+      - ml_model:/app/model        # persisted volume — downloaded from HF on first start
+    environment:
+      - HF_MODEL_REPO=${HF_MODEL_REPO:-jeffreycq/maildefender-distilbert}
+      - HF_TOKEN=${HF_TOKEN:-}           # only needed for private repos
     restart: unless-stopped
 
   # ─── React frontend (Nginx) ───────────────────────────────────────────────
@@ -56,3 +71,4 @@ services:
 
 volumes:
   ollama_data:    # persists downloaded models across restarts
+  ml_model:       # persists DistilBERT ONNX model across restarts

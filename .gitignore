@@ -25,3 +25,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# ML model files (large — stored in HuggingFace Hub, not git)
+ml/model/
+ml/data/raw/
+ml/data/processed/
