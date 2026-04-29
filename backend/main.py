@@ -14,67 +14,12 @@ from typing import Optional
 
 from parsers.email_parser import parse_email
 from scanners import abuseipdb, virustotal
-from scanners.ai_analyzer import analyze_email, OLLAMA_BASE_URL, OLLAMA_MODEL
-from scanners.ml_classifier import classify_email
+from scanners.ai_analyzer import analyze_email, ML_SERVICE_URL
 from scoring.risk_score import calculate_score
 from email_receiver import set_analysis_callback, start_smtp_server
 from email_sender import send_analysis_reply
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Ollama model warm-up
-# ---------------------------------------------------------------------------
-
-async def _ensure_ollama_model():
-    """Wait for Ollama to be ready, then pull the model if not cached."""
-    logger.info("Waiting for Ollama at %s ...", OLLAMA_BASE_URL)
-    async with aiohttp.ClientSession() as session:
-        for _ in range(30):
-            try:
-                async with session.get(
-                    f"{OLLAMA_BASE_URL}/api/tags",
-                    timeout=aiohttp.ClientTimeout(total=3),
-                ) as r:
-                    if r.status == 200:
-                        break
-            except Exception:
-                pass
-            await asyncio.sleep(2)
-        else:
-            logger.warning("Ollama not reachable after 60 s — AI analysis may fail")
-            return
-
-        logger.info("Ollama ready — pulling model %s (first run may take a few minutes)...", OLLAMA_MODEL)
-        try:
-            async with session.post(
-                f"{OLLAMA_BASE_URL}/api/pull",
-                json={"name": OLLAMA_MODEL},
-                timeout=aiohttp.ClientTimeout(total=600),
-            ) as r:
-                async for _ in r.content:
-                    pass  # consume the progress stream
-            logger.info("Model %s downloaded — warming up (loading into RAM)...", OLLAMA_MODEL)
-        except Exception as exc:
-            logger.warning("Model pull failed (may already be cached): %s", exc)
-
-        # Send a dummy inference request so the model loads into RAM now,
-        # not on the first real user request (which would time out on cold start).
-        try:
-            async with session.post(
-                f"{OLLAMA_BASE_URL}/api/chat",
-                json={
-                    "model": OLLAMA_MODEL,
-                    "messages": [{"role": "user", "content": "hi"}],
-                    "stream": False,
-                    "options": {"num_predict": 1, "num_ctx": 2048},
-                },
-                timeout=aiohttp.ClientTimeout(total=360),
-            ) as r:
-                await r.read()
-            logger.info("Model %s warm and ready", OLLAMA_MODEL)
-        except Exception as exc:
-            logger.warning("Warmup request failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -97,9 +42,6 @@ async def _handle_forwarded_email(sender_address: str, raw_bytes: bytes):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Pull model in background so the app starts responding immediately
-    asyncio.create_task(_ensure_ollama_model())
-
     loop = asyncio.get_event_loop()
     set_analysis_callback(_handle_forwarded_email)
     smtp_controller = start_smtp_server(loop)
@@ -119,11 +61,11 @@ _SCAN_ADDRESS = os.getenv("SMTP_FROM", "")
 _description = f"""
 ## MailDefender — AI-Powered Phishing Detection
 
-Analyze raw emails for phishing threats using a **local AI model** (no external token costs)
+Analyze raw emails for phishing threats using a **DistilBERT ML classifier** (no external token costs)
 combined with real-time threat intelligence from VirusTotal and AbuseIPDB.
 
 ### Features
-- **Local AI analysis** via Ollama `{OLLAMA_MODEL}` — runs entirely on your infrastructure
+- **ML classifier** via DistilBERT/ONNX — lightning-fast, runs on a dedicated microservice
 - **Email forwarding** — forward suspicious emails to `{_SCAN_ADDRESS or '<SMTP_FROM address>'}` and receive an HTML report
 - **REST API** — integrate phishing detection into your own tools
 - **Threat intelligence** — VirusTotal URL/IP checks + AbuseIPDB IP reputation
@@ -135,7 +77,7 @@ Set the `PUBLIC_API_KEY` environment variable on the server to enable it.
 
 app = FastAPI(
     title="MailDefender API",
-    version="2.0.0",
+    version="2.1.0",
     description=_description,
     lifespan=lifespan,
     contact={"name": "MailDefender", "url": "https://github.com"},
@@ -177,11 +119,6 @@ async def _run_analysis(raw: bytes | str) -> dict:
             *[virustotal.scan_ip(session, ip) for ip in ips],
             *[abuseipdb.check_ip(session, ip) for ip in ips],
             analyze_email(parsed),
-            classify_email(
-                subject=parsed.get("headers", {}).get("subject", ""),
-                sender=parsed.get("headers", {}).get("from", ""),
-                body=parsed.get("body", ""),
-            ),
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -197,11 +134,15 @@ async def _run_analysis(raw: bytes | str) -> dict:
     ai_result = results[idx] if idx < len(results) else {}
     if isinstance(ai_result, Exception):
         ai_result = {"status": "error", "error": str(ai_result), "verdict": "UNKNOWN", "confidence": 0}
-    idx += 1
 
-    ml_result = results[idx] if idx < len(results) else {}
-    if isinstance(ml_result, Exception):
-        ml_result = {"status": "error", "threat_type": "unknown"}
+    # Derive ml_result from ai_result (same ML service, no second call needed)
+    ml_result = {
+        "status":      ai_result.get("status", "error"),
+        "threat_type": ai_result.get("ml_threat_type", "unknown"),
+        "threat_level": ai_result.get("ml_threat_level", -1),
+        "confidence":  ai_result.get("confidence", 0) / 100,
+        "scores":      {k: v / 100 for k, v in ai_result.get("ml_scores", {}).items()},
+    }
 
     risk = calculate_score(parsed, vt_url_results, vt_ip_results, abuse_results, ai_result)
 
@@ -231,8 +172,8 @@ async def health():
     """Returns service status and which optional integrations are configured."""
     return {
         "status": "ok",
-        "ai_model": OLLAMA_MODEL,
-        "ai_backend": "ollama (local)",
+        "ml_classifier": ML_SERVICE_URL,
+        "ml_backend": "distilbert/onnx (microservice)",
         "configured_apis": {
             "virustotal":       bool(os.getenv("VIRUSTOTAL_API_KEY")),
             "urlscan":          bool(os.getenv("URLSCAN_API_KEY")),
