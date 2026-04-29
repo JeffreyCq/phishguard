@@ -25,6 +25,8 @@ services:
       # AI (local Ollama)
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
+      # ML Classifier microservice (external — deployed separately)
+      - ML_CLASSIFIER_URL=${ML_CLASSIFIER_URL:-}
       # Threat intelligence APIs (optional — features degrade gracefully)
       - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY}
       - URLSCAN_API_KEY=${URLSCAN_API_KEY}
@@ -41,23 +43,8 @@ services:
       # SMTP inbound listener
       - SMTP_LISTEN_PORT=2525
       - SMTP_LISTEN_HOST=0.0.0.0
-    environment:
-      - ML_CLASSIFIER_URL=http://ml-classifier:8001
     depends_on:
       - ollama
-      - ml-classifier
-    restart: unless-stopped
-
-  # ─── ML Classifier (DistilBERT ONNX) ────────────────────────────────────────
-  ml-classifier:
-    build: ./ml
-    expose:
-      - "8001"
-    volumes:
-      - ml_model:/app/model        # persisted volume — downloaded from HF on first start
-    environment:
-      - HF_MODEL_REPO=${HF_MODEL_REPO:-jeffreycq/maildefender-distilbert}
-      - HF_TOKEN=${HF_TOKEN:-}           # only needed for private repos
     restart: unless-stopped
 
   # ─── React frontend (Nginx) ───────────────────────────────────────────────
@@ -71,4 +58,3 @@ services:
 
 volumes:
   ollama_data:    # persists downloaded models across restarts
-  ml_model:       # persists DistilBERT ONNX model across restarts
