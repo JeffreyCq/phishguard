@@ -192,22 +192,22 @@ export default function App() {
                 Built by{' '}
                 <span className="text-white font-semibold">Jeffrey A. Cedeno Q.</span>
               </p>
-              <p className="text-xs text-slate-600 mt-0.5">
-                AI · Cybersecurity · Full-Stack Engineering
+              <p className="text-xs text-slate-500 mt-0.5">
+                AI Enthusiast · Cybersec Engineer
               </p>
             </div>
 
             {/* Tech stack badges */}
             <div className="flex flex-wrap justify-center gap-2">
               {[
-                { label: 'Python',      color: 'text-blue-400   border-blue-500/30   bg-blue-500/10'   },
-                { label: 'FastAPI',     color: 'text-teal-400   border-teal-500/30   bg-teal-500/10'   },
-                { label: 'React',       color: 'text-cyan-400   border-cyan-500/30   bg-cyan-500/10'   },
-                { label: 'Ollama',      color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10' },
-                { label: 'Qwen 2.5',    color: 'text-purple-400 border-purple-500/30 bg-purple-500/10' },
-                { label: 'VirusTotal',  color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' },
-                { label: 'AbuseIPDB',   color: 'text-red-400    border-red-500/30    bg-red-500/10'    },
-                { label: 'Docker',      color: 'text-sky-400    border-sky-500/30    bg-sky-500/10'    },
+                { label: 'Python',       color: 'text-blue-400   border-blue-500/30   bg-blue-500/10'   },
+                { label: 'FastAPI',      color: 'text-teal-400   border-teal-500/30   bg-teal-500/10'   },
+                { label: 'React',        color: 'text-cyan-400   border-cyan-500/30   bg-cyan-500/10'   },
+                { label: 'DistilBERT',   color: 'text-violet-400 border-violet-500/30 bg-violet-500/10' },
+                { label: 'ONNX',         color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10' },
+                { label: 'VirusTotal',   color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' },
+                { label: 'AbuseIPDB',    color: 'text-red-400    border-red-500/30    bg-red-500/10'    },
+                { label: 'Docker',       color: 'text-sky-400    border-sky-500/30    bg-sky-500/10'    },
               ].map(({ label, color }) => (
                 <span
                   key={label}
