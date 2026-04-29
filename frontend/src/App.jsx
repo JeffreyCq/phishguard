@@ -35,10 +35,12 @@ export default function App() {
             onClick={reset}
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           >
-            <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-indigo-400" />
-            </div>
-            <span className="font-bold text-white text-sm tracking-tight">MailDefender</span>
+            <img
+              src="/logomd.png"
+              alt="MailDefender"
+              className="h-8 w-auto"
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
             <span className="text-slate-600 text-xs hidden sm:block">Email Threat Analyzer</span>
           </button>
 
