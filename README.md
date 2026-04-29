@@ -5,7 +5,7 @@
 [![Live Demo](https://img.shields.io/badge/Live_Demo-maildefender.xyz-6366f1?style=for-the-badge&logo=vercel)](https://maildefender.xyz)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)](https://react.dev)
-[![Ollama](https://img.shields.io/badge/AI-Ollama_Qwen2.5-black?style=for-the-badge)](https://ollama.com)
+[![DistilBERT](https://img.shields.io/badge/ML-DistilBERT%2FONNX-7c3aed?style=for-the-badge)](https://github.com/JeffreyCq/maildefender-ml)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)](https://docker.com)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
 
@@ -13,12 +13,13 @@
 
 ## Overview
 
-MailDefender is a full-stack email threat analysis platform built to demonstrate applied skills in **AI engineering**, **cybersecurity**, and **backend automation**. It analyzes raw emails in real time through a multi-layered pipeline: structural parsing, parallel threat intelligence lookups, and local LLM inference — all running on self-hosted infrastructure with no recurring AI API costs.
+MailDefender is a full-stack email threat analysis platform built to demonstrate applied skills in **AI/ML engineering**, **cybersecurity**, and **backend automation**. It analyzes raw emails in real time through a multi-layered pipeline: structural parsing, parallel threat intelligence lookups, and a **custom-trained NLP classifier** — all running on self-hosted infrastructure with no recurring AI API costs.
 
 The platform is live at **[maildefender.xyz](https://maildefender.xyz)**.
 
 **Key design decisions:**
-- Replaced a cloud LLM (Groq / Llama 3.3 70B) with a **local Ollama model** (Qwen2.5 3B, Q4_K_M quantized) — eliminates token costs, keeps email data on-premises
+- Built and trained a **custom DistilBERT model** fine-tuned on email threat data, exported to ONNX and deployed as an independent microservice (`ml.maildefender.xyz`) — eliminates token costs, keeps email data on-premises, sub-second inference
+- The ML model classifies emails into **5 threat categories**: `legitimate`, `spam`, `phishing`, `spear_phishing`, `whaling`
 - Built an **async SMTP pipeline** so users can forward emails and receive analysis replies automatically
 - Exposed a **documented REST API** for third-party integration
 - Engineered a **weighted risk scoring engine** that combines 13+ independent signals
@@ -35,8 +36,8 @@ The platform is live at **[maildefender.xyz](https://maildefender.xyz)**.
 | 🌐 **URL scanning** | Extracts all URLs and checks them against VirusTotal in parallel |
 | 🖥️ **IP reputation** | Validates sender IPs against VirusTotal and AbuseIPDB |
 | 📎 **Attachment detection** | Flags 20+ suspicious file extensions (`.exe`, `.vbs`, `.docm`, etc.) |
-| 🤖 **AI phishing analysis** | Local LLM classifies verdict, detects social engineering tactics, explains reasoning |
-| 🚫 **AI spam analysis** | Independent spam classification with signal detection (tracking pixels, bulk headers, etc.) |
+| 🤖 **ML phishing analysis** | Custom DistilBERT classifier detects 5 threat classes, extracts tactics and red flags |
+| 🚫 **ML spam analysis** | Independent spam classification with signal detection (tracking pixels, bulk headers, etc.) |
 | 📊 **Risk scoring** | Weighted 0–100 score with itemized breakdown of every contributing signal |
 | 🔌 **Public REST API** | Authenticated endpoint for programmatic email scanning |
 | 📖 **API documentation** | Interactive Swagger UI + in-app docs with code examples |
@@ -49,14 +50,14 @@ The platform is live at **[maildefender.xyz](https://maildefender.xyz)**.
 |-------|-----------|---------|
 | **Frontend** | React 18, Vite, Tailwind CSS | SPA with dark-theme results dashboard |
 | **Backend** | Python 3.12, FastAPI, asyncio | REST API, async analysis pipeline |
-| **Local AI** | Ollama, Qwen2.5 3B (Q4_K_M) | Phishing & spam classification — runs on CPU, no external API |
+| **ML Classifier** | DistilBERT, ONNX Runtime, HuggingFace | Custom-trained phishing/spam NLP model — self-hosted microservice |
 | **Email Inbound** | aiosmtpd | SMTP server for receiving forwarded emails |
 | **Email Outbound** | aiosmtplib, Resend | Sending HTML analysis replies |
 | **Threat Intel** | VirusTotal API | URL and IP maliciousness detection |
 | **Threat Intel** | AbuseIPDB API | IP abuse history and reputation |
 | **Threat Intel** | URLScan.io API | URL scanning and screenshots |
 | **Proxy** | Nginx | Reverse proxy, SPA routing, request timeouts |
-| **Containerization** | Docker, Docker Compose | Multi-service orchestration (Ollama + Backend + Frontend) |
+| **Containerization** | Docker, Docker Compose | Two-service stack (Backend + Frontend) |
 | **Deployment** | Coolify, Hetzner VPS | Self-hosted PaaS with automatic SSL |
 
 ---
@@ -82,17 +83,17 @@ The platform is live at **[maildefender.xyz](https://maildefender.xyz)**.
 │  │  Email Sender   │   │  2. Parallel OSINT  (asyncio.gather) │ │
 │  │  (aiosmtplib)   │◀──│     VirusTotal · AbuseIPDB · URLScan │ │
 │  └─────────────────┘   │                                      │ │
-│                         │  3. Local AI  (Ollama / Qwen2.5 3B)  │ │
-│                         │     phishing verdict · spam verdict  │ │
-│                         │     tactics · red flags · reasoning  │ │
+│                         │  3. ML Classifier  (DistilBERT/ONNX) │ │
+│                         │     5 threat classes · phishing      │ │
+│                         │     verdict · spam verdict · tactics │ │
 │                         │                                      │ │
 │                         │  4. Risk Scorer  (weighted 0–100)    │ │
 │                         │     13+ signals · itemized breakdown │ │
 │                         └──────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
-          │                    │                   │
-    VirusTotal            AbuseIPDB          Ollama (local)
-    URLScan.io                               Qwen2.5 3B
+          │                    │                    │
+    VirusTotal            AbuseIPDB         ml.maildefender.xyz
+    URLScan.io                              DistilBERT / ONNX
 ```
 
 ### How the email forwarding pipeline works
@@ -106,12 +107,56 @@ scan@maildefender.xyz  (port 25, aiosmtpd)
     │
     │  Extract original message
     ▼
-Analysis Pipeline  (~25–60s on CPU)
+Analysis Pipeline  (~1–3s with DistilBERT microservice)
     │
     │  HTML report email
     ▼
-User inbox  ← analysis result with risk score, verdict, red flags
+User inbox  ← risk score, verdict, red flags, recommendation
 ```
+
+---
+
+## ML Classifier
+
+The AI core is a **custom DistilBERT model** fine-tuned on email threat data, exported to ONNX, and deployed as a standalone microservice at `ml.maildefender.xyz`. Source: [JeffreyCq/maildefender-ml](https://github.com/JeffreyCq/maildefender-ml).
+
+### Threat classes
+
+| Class | Level | Description |
+|-------|-------|-------------|
+| `legitimate` | 0 | Normal correspondence — no threat indicators |
+| `spam` | 1 | Unsolicited bulk email — no direct malicious intent |
+| `phishing` | 2 | Credential harvesting or malicious link delivery |
+| `spear_phishing` | 3 | Targeted attack with personalization based on prior reconnaissance |
+| `whaling` | 4 | High-value target attack — executive or finance profile |
+
+### Model properties
+
+| Property | Value |
+|----------|-------|
+| Architecture | DistilBERT (distilbert-base-uncased) |
+| Export format | ONNX (quantized) |
+| Inference | ~100–300 ms on CPU |
+| Classes | 5 (legitimate, spam, phishing, spear_phishing, whaling) |
+| External API calls | None — fully self-hosted |
+| Source repo | [JeffreyCq/maildefender-ml](https://github.com/JeffreyCq/maildefender-ml) |
+
+### Verdict mapping
+
+The raw class and confidence score are mapped to human-readable verdicts:
+
+| ML Class | Condition | Phishing Verdict |
+|----------|-----------|-----------------|
+| `whaling` or `spear_phishing` | — | `PHISHING` |
+| `phishing` | confidence ≥ 65% | `PHISHING` |
+| `phishing` | confidence < 65% | `SUSPICIOUS` |
+| `spam` | combined phishing scores > 30% | `SUSPICIOUS` |
+| `spam` | combined phishing scores ≤ 30% | `LIKELY_SAFE` |
+| `legitimate` | confidence ≥ 80% | `SAFE` |
+| `legitimate` | confidence < 80% | `LIKELY_SAFE` |
+
+**Why DistilBERT over a generative LLM?**
+A generative model (Ollama/Qwen) needs ~2 GB RAM and 25–60s per inference on CPU. The ONNX-quantized DistilBERT classifier uses ~200 MB and responds in under a second — without sacrificing detection accuracy for the classification task.
 
 ---
 
@@ -130,8 +175,8 @@ Every email is scored 0–100 using a weighted multi-signal system:
 | VirusTotal flagged URL | +20/URL (cap +40) |
 | VirusTotal flagged IP | +10/IP (cap +20) |
 | AbuseIPDB flagged IP | +10/IP (cap +20) |
-| AI verdict PHISHING | +30 × confidence |
-| AI verdict SUSPICIOUS | +15 × confidence |
+| ML verdict PHISHING | +30 × confidence |
+| ML verdict SUSPICIOUS | +15 × confidence |
 | URL shortener detected | +5 (cap +10) |
 
 | Score | Level | Color |
@@ -157,7 +202,7 @@ Set `PUBLIC_API_KEY` in environment variables to enable the endpoint.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/health` | — | Service status and configured integrations |
+| `GET` | `/health` | — | Service status, ML microservice URL, configured integrations |
 | `POST` | `/api/v1/scan` | ✅ | Analyze a raw email, returns full threat report |
 | `GET` | `/docs` | — | Interactive Swagger UI |
 | `GET` | `/redoc` | — | ReDoc API reference |
@@ -183,6 +228,9 @@ r = requests.post(
 )
 result = r.json()
 print(f"{result['level']} ({result['score']}/100) — {result['verdict']}")
+# Access raw ML scores
+ml = result["ml_classifier"]
+print(f"ML class: {ml['threat_type']} (level {ml['threat_level']})")
 ```
 
 ### Sample response
@@ -192,25 +240,37 @@ print(f"{result['level']} ({result['score']}/100) — {result['verdict']}")
   "score": 78,
   "level": "CRITICAL",
   "verdict": "PHISHING",
-  "confidence": 91,
-  "reasoning": "This email impersonates a banking institution using a typosquatted domain and pressures the recipient to verify credentials within 24 hours. SPF and DMARC both fail, and the reply-to points to an unrelated domain.",
-  "tactics": ["urgency", "impersonation", "brand_spoofing", "credential_harvesting"],
+  "confidence": 92,
+  "reasoning": "This email exhibits strong indicators of a phishing attempt. The sender identity, subject line, and content patterns match known phishing templates.",
+  "tactics": ["urgency", "impersonation", "credential_harvesting", "url_obfuscation"],
   "red_flags": [
-    "SPF failure — sender not authorized for claimed domain",
-    "From and Reply-To use different domains",
+    "SPF fail — sender not authorized for this domain",
+    "From domain (paypa1-support.com) differs from Reply-To domain (secure-verify.net)",
     "Link destination hidden behind URL shortener"
   ],
-  "recommendation": "Do not click any links. Mark as phishing and delete.",
-  "spam_verdict": "SPAM",
-  "spam_confidence": 82,
-  "spam_signals": ["bulk_headers", "tracking_pixel", "url_tracking"],
-  "indicators": ["spf_fail", "domain_mismatch", "url_shortener_detected"],
+  "recommendation": "Do not click any links or enter credentials — delete and report as phishing.",
+  "spam_verdict": "NOT_SPAM",
+  "spam_confidence": 91,
+  "spam_signals": [],
+  "ml_classifier": {
+    "threat_type": "phishing",
+    "threat_level": 2,
+    "confidence": 0.92,
+    "scores": {
+      "legitimate": 0.01,
+      "spam": 0.02,
+      "phishing": 0.92,
+      "spear_phishing": 0.03,
+      "whaling": 0.02
+    }
+  },
+  "indicators": ["spf_fail", "reply_to_mismatch", "url_shortener"],
   "urls_total": 3,
   "urls_flagged": 1,
   "ips_flagged": 0,
   "auth": {
     "spf": "fail",
-    "dkim": "none",
+    "dkim": "fail",
     "dmarc": "fail",
     "from_reply_to_mismatch": true
   }
@@ -224,14 +284,18 @@ print(f"{result['level']} ({result['score']}/100) — {result['verdict']}")
 | `score` | `int 0–100` | Overall risk score |
 | `level` | `string` | `LOW` · `MEDIUM` · `HIGH` · `CRITICAL` |
 | `verdict` | `string` | `SAFE` · `LIKELY_SAFE` · `SUSPICIOUS` · `PHISHING` |
-| `confidence` | `int 0–100` | AI confidence in phishing verdict |
-| `reasoning` | `string` | 2-sentence plain-English explanation |
+| `confidence` | `int 0–100` | ML confidence in phishing verdict |
+| `reasoning` | `string` | Plain-English explanation of classification |
 | `tactics` | `string[]` | Detected social engineering tactics |
 | `red_flags` | `string[]` | Specific suspicious elements |
 | `recommendation` | `string` | Suggested user action |
 | `spam_verdict` | `string` | `NOT_SPAM` · `LIKELY_SPAM` · `SPAM` |
-| `spam_confidence` | `int 0–100` | AI confidence in spam verdict |
+| `spam_confidence` | `int 0–100` | ML confidence in spam verdict |
 | `spam_signals` | `string[]` | Detected spam signals |
+| `ml_classifier.threat_type` | `string` | Raw ML class: `legitimate` · `spam` · `phishing` · `spear_phishing` · `whaling` |
+| `ml_classifier.threat_level` | `int 0–4` | Numeric severity level |
+| `ml_classifier.confidence` | `float 0–1` | Raw probability of predicted class |
+| `ml_classifier.scores` | `object` | Per-class probabilities for all 5 categories |
 | `indicators` | `string[]` | Structural threat indicators |
 | `urls_total` | `integer` | URLs extracted from the email |
 | `urls_flagged` | `integer` | URLs flagged by VirusTotal |
@@ -254,7 +318,7 @@ phishguard/
 │   ├── parsers/
 │   │   └── email_parser.py       # RFC 5322 parsing · URL/IP extraction
 │   ├── scanners/
-│   │   ├── ai_analyzer.py        # Ollama / Qwen2.5 phishing + spam analysis
+│   │   ├── ai_analyzer.py        # DistilBERT microservice client · verdict mapping
 │   │   ├── virustotal.py         # VirusTotal URL & IP checks
 │   │   ├── abuseipdb.py          # AbuseIPDB IP reputation
 │   │   └── urlscan.py            # URLScan.io submission & polling
@@ -266,7 +330,7 @@ phishguard/
 │   ├── src/
 │   │   ├── App.jsx               # Main app · scanner · API docs · footer
 │   │   └── components/
-│   │       ├── EmailUpload.jsx   # File upload + paste + progress bar
+│   │       ├── EmailUpload.jsx   # File upload + paste + animated progress bar
 │   │       ├── RiskGauge.jsx     # Animated SVG score ring
 │   │       ├── AiAnalysis.jsx    # Phishing + spam verdict cards
 │   │       ├── ScoreBreakdown.jsx
@@ -289,7 +353,7 @@ phishguard/
 ### Prerequisites
 
 - Docker & Docker Compose
-- 4 GB RAM minimum (model uses ~2 GB)
+- ML microservice running (or point `ML_SERVICE_URL` to `https://ml.maildefender.xyz`)
 
 ### 1. Clone
 
@@ -305,8 +369,8 @@ cp .env.example .env
 ```
 
 ```env
-# Required for AI analysis (auto-downloaded on first run)
-OLLAMA_MODEL=qwen2.5:3b
+# ML Classifier microservice (use the hosted instance or run maildefender-ml locally)
+ML_SERVICE_URL=https://ml.maildefender.xyz
 
 # Optional — features degrade gracefully without these
 VIRUSTOTAL_API_KEY=
@@ -333,10 +397,10 @@ docker compose up --build
 | Service | URL |
 |---------|-----|
 | Web UI | http://localhost:3000 |
-| API Docs (Swagger) | http://localhost:3000/docs |
-| Health check | http://localhost:3000/health |
+| API Docs (Swagger) | http://localhost:8000/docs |
+| Health check | http://localhost:8000/health |
 
-> **First run:** Ollama will download the Qwen2.5 3B model (~1.8 GB). This takes 2–5 minutes depending on your connection. The app starts immediately and the model is ready in the background.
+> **Note:** The ML microservice runs separately. By default it points to `https://ml.maildefender.xyz`. To run it locally, see [maildefender-ml](https://github.com/JeffreyCq/maildefender-ml).
 
 ---
 
@@ -349,14 +413,14 @@ docker compose up --build
    ```bash
    ufw allow 25/tcp
    ```
-5. Add an `MX` DNS record pointing your domain to your server IP
+5. Add an `MX` DNS record pointing your domain to your server hostname
 6. Hit **Deploy** — Coolify handles SSL via Let's Encrypt automatically
 
 ---
 
 ## API Keys
 
-All integrations are optional. The platform degrades gracefully — AI analysis and header parsing work with no external keys.
+All integrations are optional. The platform degrades gracefully — ML analysis and header parsing work with no external keys.
 
 | Service | Purpose | Free Tier |
 |---------|---------|-----------|
@@ -367,40 +431,21 @@ All integrations are optional. The platform degrades gracefully — AI analysis 
 
 ---
 
-## AI Model
-
-The platform uses **Qwen2.5 3B Instruct** (Q4_K_M quantization) running locally via Ollama.
-
-| Property | Value |
-|----------|-------|
-| Model | Qwen2.5 3B Instruct |
-| Quantization | Q4_K_M (4-bit) |
-| Size on disk | ~1.8 GB |
-| RAM usage | ~2 GB |
-| Inference (CPU) | 25–60s depending on email length |
-| Context window | 2,048 tokens (optimized from 32,768) |
-| External API calls | None — fully local |
-
-**Why a local model?**
-Running inference locally eliminates token costs, keeps potentially sensitive email content off third-party infrastructure, and demonstrates practical LLM deployment skills — not just API consumption.
-
----
-
 ## Engineering Highlights
 
-- **Async parallel execution** — `asyncio.gather()` runs VirusTotal, AbuseIPDB, and Ollama concurrently, minimizing total latency
+- **Custom ML model** — fine-tuned DistilBERT on email threat data, ONNX-exported for fast CPU inference, deployed as a standalone microservice; avoids the 2 GB RAM overhead and 25–60s latency of a generative LLM
+- **Async parallel execution** — `asyncio.gather()` runs VirusTotal, AbuseIPDB, and the ML classifier concurrently, minimizing total pipeline latency
 - **Graceful degradation** — every external integration is optional; missing API keys are handled without crashes
 - **SMTP pipeline** — `aiosmtpd` runs in its own thread, scheduling analysis coroutines on the FastAPI event loop via `run_coroutine_threadsafe`
-- **Model warm-up** — Ollama model is pre-loaded into RAM at startup via a dummy inference call, eliminating cold-start latency for real requests
-- **Inference optimization** — `num_ctx: 2048` instead of model default (32,768) reduces KV cache size and speeds up CPU inference by ~50%
 - **Email extraction** — inbound forwarded emails are unwrapped from their `message/rfc822` attachment when present, so the original phishing email (not the forwarding wrapper) is analyzed
+- **Rule-based enrichment** — tactics, red flags, and spam signals are derived post-classification from header metadata and body heuristics, adding explainability on top of the ML output
 
 ---
 
 ## Built By
 
-**Jeffrey A. Cedeno Q.**
-AI · Cybersecurity · Full-Stack Engineering · Support Engineering · Automation
+**Jeffrey A. Cedeno Q.**  
+AI Enthusiast · Cybersec Engineer · Support Engineering · Automation
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=flat&logo=linkedin)](https://linkedin.com)
 [![GitHub](https://img.shields.io/badge/GitHub-JeffreyCq-181717?style=flat&logo=github)](https://github.com/JeffreyCq)

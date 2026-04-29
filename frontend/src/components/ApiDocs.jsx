@@ -1,14 +1,15 @@
-import { Terminal, Mail, Key, Zap, Shield, Globe, Server, Brain, ChevronRight } from 'lucide-react'
+import { Terminal, Mail, Key, Zap, Shield, Globe, Server, Brain, ChevronRight, Cpu } from 'lucide-react'
 
 // ── Reusable primitives ──────────────────────────────────────────────────────
 
 function Badge({ children, color = 'indigo' }) {
   const classes = {
-    indigo: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-    green:  'bg-green-500/15  text-green-300  border-green-500/30',
-    yellow: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30',
-    red:    'bg-red-500/15    text-red-300    border-red-500/30',
-    slate:  'bg-slate-700     text-slate-300  border-slate-600',
+    indigo:  'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+    violet:  'bg-violet-500/15 text-violet-300 border-violet-500/30',
+    green:   'bg-green-500/15  text-green-300  border-green-500/30',
+    yellow:  'bg-yellow-500/15 text-yellow-300 border-yellow-500/30',
+    red:     'bg-red-500/15    text-red-300    border-red-500/30',
+    slate:   'bg-slate-700     text-slate-300  border-slate-600',
   }
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono border ${classes[color]}`}>
@@ -26,7 +27,7 @@ function Method({ verb }) {
   )
 }
 
-function CodeBlock({ children, lang = 'bash' }) {
+function CodeBlock({ children }) {
   return (
     <pre className="mt-2 bg-slate-950 border border-slate-800 rounded-lg p-4 text-xs text-slate-300 font-mono overflow-x-auto leading-relaxed">
       {children}
@@ -91,12 +92,13 @@ export default function ApiDocs({ scanAddress }) {
   const address = scanAddress || 'scan@maildefender.xyz'
 
   const navItems = [
-    { id: 'overview',    label: 'Overview' },
+    { id: 'overview',    label: 'Overview'       },
+    { id: 'classifier',  label: 'ML Classifier'  },
     { id: 'auth',        label: 'Authentication' },
-    { id: 'endpoints',   label: 'Endpoints' },
-    { id: 'response',    label: 'Response Schema' },
-    { id: 'email',       label: 'Email Forwarding' },
-    { id: 'examples',    label: 'Code Examples' },
+    { id: 'endpoints',   label: 'Endpoints'      },
+    { id: 'response',    label: 'Response Schema'},
+    { id: 'email',       label: 'Email Forwarding'},
+    { id: 'examples',    label: 'Code Examples'  },
   ]
 
   const scrollTo = (id) =>
@@ -128,17 +130,18 @@ export default function ApiDocs({ scanAddress }) {
         <Section id="overview" icon={Shield} title="Overview">
           <Card>
             <p className="text-sm text-slate-300 leading-relaxed">
-              <strong className="text-white">MailDefender</strong> is an AI-powered phishing
-              detection service. It analyzes raw emails using a{' '}
-              <strong className="text-indigo-300">local Ollama model</strong> (no external token
-              costs) combined with real-time threat intelligence from VirusTotal and AbuseIPDB.
+              <strong className="text-white">MailDefender</strong> is a phishing and spam
+              detection platform. It analyzes raw emails using a{' '}
+              <strong className="text-violet-300">custom-trained DistilBERT microservice</strong>{' '}
+              (no external API costs, no data leaves your infrastructure) combined with
+              real-time threat intelligence from VirusTotal and AbuseIPDB.
             </p>
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { icon: Brain,    label: 'Local AI',       desc: 'qwen2.5:3b via Ollama — runs on your infra' },
-                { icon: Shield,   label: 'Threat Intel',   desc: 'VirusTotal URL & IP checks + AbuseIPDB' },
-                { icon: Mail,     label: 'Email Forward',  desc: `Forward to ${address} — get instant reply` },
-                { icon: Terminal, label: 'REST API',       desc: 'Integrate phishing detection in your apps' },
+                { icon: Cpu,      label: 'DistilBERT / ONNX',  desc: 'Custom-trained NLP classifier — fast, local, no token costs' },
+                { icon: Shield,   label: 'Threat Intel',        desc: 'VirusTotal URL & IP checks + AbuseIPDB reputation' },
+                { icon: Mail,     label: 'Email Forwarding',    desc: `Forward to ${address} — get instant HTML report` },
+                { icon: Terminal, label: 'REST API',            desc: 'Integrate phishing detection in your own tools' },
               ].map(({ icon: Icon, label, desc }) => (
                 <div key={label} className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
                   <Icon className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
@@ -152,6 +155,116 @@ export default function ApiDocs({ scanAddress }) {
             <div className="mt-4 flex items-center gap-2 text-sm text-slate-400">
               <span className="text-slate-500">Base URL</span>
               <code className="text-indigo-300 font-mono">https://maildefender.xyz</code>
+            </div>
+          </Card>
+        </Section>
+
+        {/* ML Classifier */}
+        <Section id="classifier" icon={Cpu} title="ML Classifier">
+          <Card>
+            <p className="text-sm text-slate-300 leading-relaxed mb-4">
+              The core of MailDefender is a{' '}
+              <strong className="text-white">custom DistilBERT model</strong> fine-tuned
+              on email threat data and exported to{' '}
+              <strong className="text-white">ONNX</strong> for fast CPU inference. It runs
+              as an independent microservice at{' '}
+              <code className="text-violet-300">ml.maildefender.xyz</code> and classifies
+              every email into one of five threat categories.
+            </p>
+
+            {/* 5 threat classes */}
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Threat Classes</p>
+            <div className="space-y-2 mb-5">
+              {[
+                { cls: 'legitimate',     level: 0, color: 'green',  desc: 'Normal correspondence — no threat indicators detected.' },
+                { cls: 'spam',           level: 1, color: 'yellow', desc: 'Unsolicited bulk email. No direct malicious intent but unwanted.' },
+                { cls: 'phishing',       level: 2, color: 'yellow', desc: 'Credential harvesting or malicious link delivery targeting a generic recipient.' },
+                { cls: 'spear_phishing', level: 3, color: 'red',    desc: 'Targeted attack with personalization — prior reconnaissance on the victim is evident.' },
+                { cls: 'whaling',        level: 4, color: 'red',    desc: 'High-value target attack (executive, finance) — elevated threat level.' },
+              ].map(({ cls, level, color, desc }) => (
+                <div key={cls} className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/40 border border-slate-800">
+                  <div className="flex items-center gap-2 w-36 shrink-0">
+                    <Badge color={color}>{cls}</Badge>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Verdict mapping */}
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Verdict Mapping</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="pb-2 text-xs text-slate-500 uppercase tracking-wide">ML Class</th>
+                    <th className="pb-2 text-xs text-slate-500 uppercase tracking-wide">Condition</th>
+                    <th className="pb-2 text-xs text-slate-500 uppercase tracking-wide">Phishing Verdict</th>
+                    <th className="pb-2 text-xs text-slate-500 uppercase tracking-wide">Spam Verdict</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-400 text-xs">
+                  <tr className="border-b border-slate-800/40"><td className="py-2 pr-4"><Badge color="red">whaling</Badge></td><td className="py-2 pr-4">—</td><td className="py-2 pr-4"><Badge color="red">PHISHING</Badge></td><td className="py-2">NOT_SPAM</td></tr>
+                  <tr className="border-b border-slate-800/40"><td className="py-2 pr-4"><Badge color="red">spear_phishing</Badge></td><td className="py-2 pr-4">—</td><td className="py-2 pr-4"><Badge color="red">PHISHING</Badge></td><td className="py-2">NOT_SPAM</td></tr>
+                  <tr className="border-b border-slate-800/40"><td className="py-2 pr-4"><Badge color="yellow">phishing</Badge></td><td className="py-2 pr-4">confidence ≥ 65%</td><td className="py-2 pr-4"><Badge color="red">PHISHING</Badge></td><td className="py-2">NOT_SPAM</td></tr>
+                  <tr className="border-b border-slate-800/40"><td className="py-2 pr-4"><Badge color="yellow">phishing</Badge></td><td className="py-2 pr-4">confidence &lt; 65%</td><td className="py-2 pr-4"><Badge color="yellow">SUSPICIOUS</Badge></td><td className="py-2">NOT_SPAM</td></tr>
+                  <tr className="border-b border-slate-800/40"><td className="py-2 pr-4"><Badge color="yellow">spam</Badge></td><td className="py-2 pr-4">phishing scores &gt; 30%</td><td className="py-2 pr-4"><Badge color="yellow">SUSPICIOUS</Badge></td><td className="py-2">SPAM</td></tr>
+                  <tr className="border-b border-slate-800/40"><td className="py-2 pr-4"><Badge color="yellow">spam</Badge></td><td className="py-2 pr-4">phishing scores ≤ 30%</td><td className="py-2 pr-4"><Badge color="green">LIKELY_SAFE</Badge></td><td className="py-2">SPAM</td></tr>
+                  <tr className="border-b border-slate-800/40"><td className="py-2 pr-4"><Badge color="green">legitimate</Badge></td><td className="py-2 pr-4">confidence ≥ 80%</td><td className="py-2 pr-4"><Badge color="green">SAFE</Badge></td><td className="py-2">NOT_SPAM</td></tr>
+                  <tr><td className="py-2 pr-4"><Badge color="green">legitimate</Badge></td><td className="py-2 pr-4">confidence &lt; 80%</td><td className="py-2 pr-4"><Badge color="green">LIKELY_SAFE</Badge></td><td className="py-2">NOT_SPAM</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Detectable signals */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Social Engineering Tactics</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'urgency', 'fear', 'authority', 'impersonation',
+                  'credential_harvesting', 'brand_spoofing',
+                  'prize_scam', 'invoice_fraud',
+                  'malware_delivery', 'url_obfuscation',
+                ].map(t => <Badge key={t} color="slate">{t}</Badge>)}
+              </div>
+            </Card>
+            <Card>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Spam Signals</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'tracking_pixel', 'unsubscribe_link', 'bulk_headers',
+                  'mass_marketing_platform', 'url_tracking',
+                  'promotional_language', 'suspicious_sender_domain',
+                ].map(t => <Badge key={t} color="slate">{t}</Badge>)}
+              </div>
+            </Card>
+          </div>
+
+          {/* Header / structural signals */}
+          <Card>
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Structural & Header Indicators</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-400">
+              {[
+                'SPF fail / softfail',
+                'DKIM signature failure',
+                'DMARC policy violation',
+                'From ↔ Reply-To domain mismatch',
+                'Typosquatted sender domain',
+                'URL shortener (bit.ly, tinyurl…)',
+                'Suspicious attachment extension',
+                'Executable / macro file in attachment',
+                'VirusTotal flagged URL',
+                'VirusTotal flagged sender IP',
+                'AbuseIPDB reported IP',
+                'Bare IP address as sender',
+              ].map(s => (
+                <div key={s} className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+                  {s}
+                </div>
+              ))}
             </div>
           </Card>
         </Section>
@@ -172,7 +285,8 @@ export default function ApiDocs({ scanAddress }) {
             <div className="mt-4 p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
               <p className="text-xs text-yellow-300">
                 <strong>Setup:</strong> Set the <code>PUBLIC_API_KEY</code> environment variable on
-                the server to any random secret string. If not set, the endpoint returns 503.
+                the server to any random secret. Generate one with:{' '}
+                <code>openssl rand -hex 32</code>. If not set, the endpoint returns 503.
               </p>
             </div>
           </Card>
@@ -184,13 +298,13 @@ export default function ApiDocs({ scanAddress }) {
             <EndpointRow
               method="GET"
               path="/health"
-              description="Returns service status and which integrations are configured."
+              description="Returns service status, ML microservice URL, and which integrations are configured."
             />
             <EndpointRow
               method="POST"
               path="/api/v1/scan"
               auth
-              description="Analyze a raw email. Returns full threat report with risk score, AI verdict, and indicators."
+              description="Analyze a raw email. Returns full threat report with risk score, ML verdict, and all indicators."
             />
             <EndpointRow
               method="GET"
@@ -214,8 +328,8 @@ export default function ApiDocs({ scanAddress }) {
             <CodeBlock>
 {`{
   "status": "ok",
-  "ai_model": "qwen2.5:3b",
-  "ai_backend": "ollama (local)",
+  "ml_classifier": "https://ml.maildefender.xyz",
+  "ml_backend": "distilbert/onnx (microservice)",
   "configured_apis": {
     "virustotal": true,
     "urlscan": false,
@@ -258,47 +372,61 @@ export default function ApiDocs({ scanAddress }) {
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-slate-700">
-                    <th className="pb-2 text-xs text-slate-500 uppercase tracking-wide w-36">Field</th>
+                    <th className="pb-2 text-xs text-slate-500 uppercase tracking-wide w-40">Field</th>
                     <th className="pb-2 text-xs text-slate-500 uppercase tracking-wide w-24">Type</th>
                     <th className="pb-2 text-xs text-slate-500 uppercase tracking-wide">Description</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <ResponseField field="score"          type="int 0–100" description="Overall risk score. Higher = more dangerous." />
-                  <ResponseField field="level"          type="string"    description="LOW · MEDIUM · HIGH · CRITICAL" />
-                  <ResponseField field="verdict"        type="string"    description="SAFE · LIKELY_SAFE · SUSPICIOUS · PHISHING" />
-                  <ResponseField field="confidence"     type="int 0–100" description="AI confidence in the verdict." />
-                  <ResponseField field="reasoning"      type="string"    description="2–3 sentence plain-English explanation from the AI." />
-                  <ResponseField field="tactics"        type="string[]"  description="Detected social engineering tactics (e.g. urgency, impersonation, brand_spoofing)." />
-                  <ResponseField field="red_flags"      type="string[]"  description="Specific suspicious elements identified by the AI." />
+                  <tr><td colSpan={3} className="pt-4 pb-1"><p className="text-xs text-slate-500 uppercase tracking-wide">Risk Score</p></td></tr>
+                  <ResponseField field="score"          type="int 0–100" description="Overall risk score. Weighted combination of all signals." />
+                  <ResponseField field="level"          type="string"    description="LOW (0–19) · MEDIUM (20–44) · HIGH (45–69) · CRITICAL (70–100)" />
+
+                  <tr><td colSpan={3} className="pt-4 pb-1"><p className="text-xs text-slate-500 uppercase tracking-wide">Phishing Analysis</p></td></tr>
+                  <ResponseField field="verdict"        type="string"    description="SAFE · LIKELY_SAFE · SUSPICIOUS · PHISHING — derived from ML classifier output." />
+                  <ResponseField field="confidence"     type="int 0–100" description="ML classifier confidence in the phishing verdict." />
+                  <ResponseField field="reasoning"      type="string"    description="Plain-English explanation of the threat classification." />
+                  <ResponseField field="tactics"        type="string[]"  description="Detected social engineering tactics (urgency, impersonation, credential_harvesting, etc.)." />
+                  <ResponseField field="red_flags"      type="string[]"  description="Specific threat indicators found in headers, body, and metadata." />
                   <ResponseField field="recommendation" type="string"    description="Suggested action for the end user." />
-                  <ResponseField field="indicators"     type="string[]"  description="Structural threat indicators: SPF/DKIM/DMARC failures, domain mismatches, URL shorteners." />
-                  <ResponseField field="urls_total"     type="integer"   description="Total URLs extracted from the email." />
+
+                  <tr><td colSpan={3} className="pt-4 pb-1"><p className="text-xs text-slate-500 uppercase tracking-wide">Spam Analysis</p></td></tr>
+                  <ResponseField field="spam_verdict"    type="string"    description="NOT_SPAM · LIKELY_SPAM · SPAM — independent from phishing verdict." />
+                  <ResponseField field="spam_confidence" type="int 0–100" description="ML confidence in the spam verdict." />
+                  <ResponseField field="spam_signals"    type="string[]"  description="Detected spam signals: tracking_pixel, bulk_headers, mass_marketing_platform, unsubscribe_link, url_tracking, promotional_language, suspicious_sender_domain." />
+
+                  <tr><td colSpan={3} className="pt-4 pb-1"><p className="text-xs text-slate-500 uppercase tracking-wide">Raw ML Output</p></td></tr>
+                  <ResponseField field="ml_classifier.threat_type"  type="string"    description="Raw class from the model: legitimate · spam · phishing · spear_phishing · whaling" />
+                  <ResponseField field="ml_classifier.threat_level" type="int 0–4"   description="Numeric severity: 0=legitimate, 1=spam, 2=phishing, 3=spear_phishing, 4=whaling" />
+                  <ResponseField field="ml_classifier.confidence"   type="float 0–1" description="Raw probability of the predicted class." />
+                  <ResponseField field="ml_classifier.scores"       type="object"    description="Per-class probability scores (0–1) for all five categories." />
+
+                  <tr><td colSpan={3} className="pt-4 pb-1"><p className="text-xs text-slate-500 uppercase tracking-wide">Threat Intelligence</p></td></tr>
+                  <ResponseField field="indicators"     type="string[]"  description="Structural indicators: SPF/DKIM/DMARC failures, domain mismatches, URL shorteners, suspicious attachments." />
+                  <ResponseField field="urls_total"     type="integer"   description="Total URLs extracted from the email body." />
                   <ResponseField field="urls_flagged"   type="integer"   description="URLs flagged as malicious by VirusTotal." />
                   <ResponseField field="ips_flagged"    type="integer"   description="Sender IPs flagged by VirusTotal or AbuseIPDB." />
-                  <ResponseField field="auth.spf"       type="string"    description="SPF result: pass · fail · softfail · none" />
-                  <ResponseField field="auth.dkim"      type="string"    description="DKIM result: pass · fail · none" />
-                  <ResponseField field="auth.dmarc"     type="string"    description="DMARC result: pass · fail · none" />
+
+                  <tr><td colSpan={3} className="pt-4 pb-1"><p className="text-xs text-slate-500 uppercase tracking-wide">Email Authentication</p></td></tr>
+                  <ResponseField field="auth.spf"                    type="string"  description="SPF result: pass · fail · softfail · none" />
+                  <ResponseField field="auth.dkim"                   type="string"  description="DKIM result: pass · fail · none" />
+                  <ResponseField field="auth.dmarc"                  type="string"  description="DMARC result: pass · fail · none" />
                   <ResponseField field="auth.from_reply_to_mismatch" type="boolean" description="true if From and Reply-To use different domains." />
-                  <tr><td colSpan={3} className="pt-4 pb-1"><p className="text-xs text-slate-500 uppercase tracking-wide">Spam Analysis</p></td></tr>
-                  <ResponseField field="spam_verdict"    type="string"   description="SPAM · LIKELY_SPAM · NOT_SPAM — independent from phishing verdict." />
-                  <ResponseField field="spam_confidence" type="int 0–100" description="AI confidence in the spam verdict." />
-                  <ResponseField field="spam_signals"    type="string[]" description="Detected spam signals: bulk_headers, tracking_pixel, mass_marketing_platform, unsubscribe_link, promotional_language, generic_greeting, unsolicited_contact, url_tracking, suspicious_sender_domain, excessive_images." />
                 </tbody>
               </table>
             </div>
           </Card>
 
-          {/* Verdict/Level values */}
+          {/* Risk / verdict quick ref */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card>
               <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Risk Levels</p>
               <div className="space-y-2 text-sm">
                 {[
-                  { val: 'LOW',      range: '0–19',  color: 'green'  },
-                  { val: 'MEDIUM',   range: '20–44', color: 'yellow' },
-                  { val: 'HIGH',     range: '45–69', color: 'yellow' },
-                  { val: 'CRITICAL', range: '70–100',color: 'red'    },
+                  { val: 'LOW',      range: '0–19',   color: 'green'  },
+                  { val: 'MEDIUM',   range: '20–44',  color: 'yellow' },
+                  { val: 'HIGH',     range: '45–69',  color: 'yellow' },
+                  { val: 'CRITICAL', range: '70–100', color: 'red'    },
                 ].map(({ val, range, color }) => (
                   <div key={val} className="flex items-center justify-between">
                     <Badge color={color}>{val}</Badge>
@@ -308,12 +436,18 @@ export default function ApiDocs({ scanAddress }) {
               </div>
             </Card>
             <Card>
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Detectable Tactics</p>
-              <div className="flex flex-wrap gap-1.5">
-                {['urgency','fear','impersonation','credential_harvesting','brand_spoofing',
-                  'prize_scam','invoice_fraud','malware_delivery','url_obfuscation','authority'
-                ].map(t => (
-                  <Badge key={t} color="slate">{t}</Badge>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Phishing Verdicts</p>
+              <div className="space-y-2 text-sm">
+                {[
+                  { val: 'SAFE',        color: 'green',  note: 'legitimate ≥ 80% conf.'   },
+                  { val: 'LIKELY_SAFE', color: 'green',  note: 'legitimate < 80% conf.'   },
+                  { val: 'SUSPICIOUS',  color: 'yellow', note: 'phishing < 65% conf.'     },
+                  { val: 'PHISHING',    color: 'red',    note: 'whaling / spear / phishing ≥ 65%' },
+                ].map(({ val, color, note }) => (
+                  <div key={val} className="flex items-center justify-between gap-2">
+                    <Badge color={color}>{val}</Badge>
+                    <span className="text-slate-500 text-xs text-right">{note}</span>
+                  </div>
                 ))}
               </div>
             </Card>
@@ -331,8 +465,8 @@ export default function ApiDocs({ scanAddress }) {
             <div className="space-y-4">
               {[
                 { step: '1', title: 'Forward the email', desc: `In your email client, use "Forward" on the suspicious email and send it to ${address}.` },
-                { step: '2', title: 'Wait a few seconds', desc: 'MailDefender receives it, runs the full analysis pipeline (AI + threat intel), and generates your report.' },
-                { step: '3', title: 'Check your inbox', desc: 'You receive an HTML email with the risk level, AI verdict, detected tactics, red flags, and a recommendation.' },
+                { step: '2', title: 'Wait a few seconds', desc: 'MailDefender receives it, runs the full pipeline (ML classifier + threat intel + risk score) and generates your report.' },
+                { step: '3', title: 'Check your inbox', desc: 'You receive an HTML email with the risk level, verdict, detected tactics, red flags, and a clear recommendation.' },
               ].map(({ step, title, desc }) => (
                 <div key={step} className="flex gap-3">
                   <div className="w-6 h-6 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shrink-0 mt-0.5">
@@ -383,7 +517,7 @@ Click here: http://phishing-site.com'`}
           {/* Python */}
           <Card>
             <p className="text-sm font-medium text-slate-200 mb-1">Python</p>
-            <CodeBlock lang="python">
+            <CodeBlock>
 {`import requests
 
 with open("suspicious.eml", "r") as f:
@@ -400,14 +534,20 @@ print(f"Risk: {result['level']} ({result['score']}/100)")
 print(f"Verdict: {result['verdict']} — {result['confidence']}% confidence")
 print(f"Reasoning: {result['reasoning']}")
 if result["tactics"]:
-    print(f"Tactics: {', '.join(result['tactics'])}")`}
+    print(f"Tactics: {', '.join(result['tactics'])}")
+
+# Access raw ML scores
+ml = result["ml_classifier"]
+print(f"ML class: {ml['threat_type']} (level {ml['threat_level']})")
+for cls, prob in ml["scores"].items():
+    print(f"  {cls}: {prob:.2%}")`}
             </CodeBlock>
           </Card>
 
           {/* JavaScript */}
           <Card>
             <p className="text-sm font-medium text-slate-200 mb-1">JavaScript / Node.js</p>
-            <CodeBlock lang="javascript">
+            <CodeBlock>
 {`const form = new FormData();
 form.append('raw_email', rawEmailString);
 
@@ -417,8 +557,9 @@ const res = await fetch('https://maildefender.xyz/api/v1/scan', {
   body: form,
 });
 
-const { score, level, verdict, reasoning, tactics } = await res.json();
-console.log(\`\${level} (\${score}/100) — \${verdict}\`);`}
+const { score, level, verdict, reasoning, tactics, ml_classifier } = await res.json();
+console.log(\`\${level} (\${score}/100) — \${verdict}\`);
+console.log(\`ML class: \${ml_classifier.threat_type}\`);`}
             </CodeBlock>
           </Card>
 
@@ -431,27 +572,40 @@ console.log(\`\${level} (\${score}/100) — \${verdict}\`);`}
   "level": "CRITICAL",
   "verdict": "PHISHING",
   "confidence": 92,
-  "reasoning": "This email impersonates a banking institution and uses urgency to pressure the recipient into clicking a suspicious link. The From domain does not match the claimed sender and SPF authentication failed.",
-  "tactics": ["impersonation", "urgency", "brand_spoofing", "credential_harvesting"],
+  "reasoning": "This email exhibits strong indicators of a phishing attempt. The sender identity, subject line, and content patterns match known phishing templates.",
+  "tactics": ["impersonation", "urgency", "credential_harvesting", "url_obfuscation"],
   "red_flags": [
-    "SPF failure — sender not authorized for claimed domain",
-    "From domain 'bank-secure-login.com' does not match 'mybank.com'",
+    "SPF fail — sender not authorized for this domain",
+    "From domain (paypa1-support.com) differs from Reply-To domain (secure-verify.net)",
     "Link destination hidden behind URL shortener"
   ],
-  "recommendation": "Do not click any links — mark as phishing and report to your IT team.",
-  "indicators": ["spf_fail", "domain_mismatch", "url_shortener_detected"],
+  "recommendation": "Do not click any links or enter credentials — delete and report as phishing.",
+  "spam_verdict": "NOT_SPAM",
+  "spam_confidence": 91,
+  "spam_signals": [],
+  "ml_classifier": {
+    "status": "ok",
+    "threat_type": "phishing",
+    "threat_level": 2,
+    "confidence": 0.92,
+    "scores": {
+      "legitimate": 0.01,
+      "spam": 0.02,
+      "phishing": 0.92,
+      "spear_phishing": 0.03,
+      "whaling": 0.02
+    }
+  },
+  "indicators": ["spf_fail", "reply_to_mismatch", "url_shortener"],
   "urls_total": 3,
   "urls_flagged": 1,
   "ips_flagged": 0,
   "auth": {
     "spf": "fail",
-    "dkim": "none",
+    "dkim": "fail",
     "dmarc": "fail",
     "from_reply_to_mismatch": true
-  },
-  "spam_verdict": "SPAM",
-  "spam_confidence": 78,
-  "spam_signals": ["bulk_headers", "tracking_pixel", "url_tracking", "unsubscribe_link"]
+  }
 }`}
             </CodeBlock>
           </Card>
