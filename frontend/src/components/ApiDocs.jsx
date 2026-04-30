@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Terminal, Mail, Key, Zap, Shield, Globe, Server, Brain, ChevronRight, Cpu } from 'lucide-react'
 
 // ── Reusable primitives ──────────────────────────────────────────────────────
@@ -19,7 +20,7 @@ function Badge({ children, color = 'indigo' }) {
 }
 
 function Method({ verb }) {
-  const colors = { POST: 'bg-blue-600', GET: 'bg-green-600' }
+  const colors = { POST: 'bg-blue-600', GET: 'bg-green-600', DELETE: 'bg-red-700' }
   return (
     <span className={`${colors[verb] ?? 'bg-slate-600'} text-white text-xs font-bold px-2 py-0.5 rounded font-mono`}>
       {verb}
@@ -32,6 +33,33 @@ function CodeBlock({ children }) {
     <pre className="mt-2 bg-slate-950 border border-slate-800 rounded-lg p-4 text-xs text-slate-300 font-mono overflow-x-auto leading-relaxed">
       {children}
     </pre>
+  )
+}
+
+function CodeTabs({ tabs }) {
+  const [active, setActive] = useState(tabs[0].label)
+  const current = tabs.find(t => t.label === active)
+  return (
+    <div className="mt-2">
+      <div className="flex gap-0.5 border-b border-slate-800">
+        {tabs.map(t => (
+          <button
+            key={t.label}
+            onClick={() => setActive(t.label)}
+            className={`px-3 py-1.5 text-xs font-mono transition-colors rounded-t ${
+              active === t.label
+                ? 'bg-slate-950 text-white border border-b-slate-950 border-slate-800 -mb-px z-10 relative'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <pre className="bg-slate-950 border border-slate-800 border-t-0 rounded-b-lg p-4 text-xs text-slate-300 font-mono overflow-x-auto leading-relaxed">
+        {current.code}
+      </pre>
+    </div>
   )
 }
 
@@ -273,21 +301,66 @@ export default function ApiDocs({ scanAddress }) {
         <Section id="auth" icon={Key} title="Authentication">
           <Card>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              The <code className="text-indigo-300">/api/v1/scan</code> endpoint requires an API
-              key. Pass it in the <code className="text-yellow-300">X-API-Key</code> request header.
-              The web UI (<code className="text-indigo-300">/analyze</code>) has no authentication.
+              The <code className="text-indigo-300">/api/v1/scan</code> endpoint requires an API key.
+              Pass it in the <code className="text-yellow-300">X-API-Key</code> request header.
+              The web UI (<code className="text-indigo-300">/analyze</code>) has no authentication requirement.
             </p>
+
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Key Format</p>
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800 mb-4 font-mono text-sm">
+              <span className="text-violet-400">mdef_</span>
+              <span className="text-slate-400">xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
+            </div>
+
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Usage</p>
             <CodeBlock>
 {`curl -X POST https://maildefender.xyz/api/v1/scan \\
-  -H "X-API-Key: YOUR_API_KEY" \\
-  -F "raw_email=<email.txt"`}
+  -H "X-API-Key: mdef_your_key_here" \\
+  -F "raw_email=<suspicious.eml"`}
             </CodeBlock>
-            <div className="mt-4 p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
-              <p className="text-xs text-yellow-300">
-                <strong>Setup:</strong> Set the <code>PUBLIC_API_KEY</code> environment variable on
-                the server to any random secret. Generate one with:{' '}
-                <code>openssl rand -hex 32</code>. If not set, the endpoint returns 503.
+          </Card>
+
+          <Card>
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Obtaining a Key</p>
+            <p className="text-sm text-slate-300 leading-relaxed mb-3">
+              API keys are issued by the MailDefender administrator. Contact{' '}
+              <a href="mailto:jeffreyacq@gmail.com" className="text-indigo-300 hover:text-indigo-200 underline underline-offset-2">
+                jeffreyacq@gmail.com
+              </a>{' '}
+              to request access. Include your use case and expected request volume.
+            </p>
+            <div className="p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/20">
+              <p className="text-xs text-indigo-300">
+                Keys are prefixed <code>mdef_</code> and shown <strong>once</strong> at issuance — store yours securely.
+                Lost keys must be revoked and reissued.
               </p>
+            </div>
+          </Card>
+
+          <Card>
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Rate Limits</p>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-1.5" />
+                <div>
+                  <p className="text-sm text-slate-200 font-medium">1,000 requests / day</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Default limit per key. Resets at midnight UTC.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                <div className="w-2 h-2 rounded-full bg-yellow-500 shrink-0 mt-1.5" />
+                <div>
+                  <p className="text-sm text-slate-200 font-medium">429 Too Many Requests</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Returned when limit is exceeded. Try again the next day or contact the admin for a higher limit.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+                <div>
+                  <p className="text-sm text-slate-200 font-medium">401 Unauthorized</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Missing, invalid, or revoked key. Verify your <code className="text-slate-300">X-API-Key</code> header is correct.</p>
+                </div>
+              </div>
             </div>
           </Card>
         </Section>
@@ -295,6 +368,7 @@ export default function ApiDocs({ scanAddress }) {
         {/* Endpoints */}
         <Section id="endpoints" icon={Zap} title="Endpoints">
           <Card>
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Public</p>
             <EndpointRow
               method="GET"
               path="/health"
@@ -315,6 +389,33 @@ export default function ApiDocs({ scanAddress }) {
               method="GET"
               path="/redoc"
               description="ReDoc-rendered API reference documentation."
+            />
+          </Card>
+
+          <Card>
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">Admin</p>
+              <Badge color="red">X-Admin-Secret</Badge>
+            </div>
+            <EndpointRow
+              method="POST"
+              path="/admin/keys"
+              description="Issue a new API key. Returns the raw key once — store it securely. Accepts label and rate_limit fields."
+            />
+            <EndpointRow
+              method="GET"
+              path="/admin/keys"
+              description="List all issued keys showing prefix, label, active status, rate limit, and last-used timestamp. Raw key never returned."
+            />
+            <EndpointRow
+              method="DELETE"
+              path="/admin/keys/{prefix}"
+              description="Revoke a key by its 8-char prefix. Takes effect immediately."
+            />
+            <EndpointRow
+              method="GET"
+              path="/admin/export"
+              description="Export incorrectly-labelled scan feedback as CSV for model retraining."
             />
           </Card>
 
@@ -494,38 +595,36 @@ export default function ApiDocs({ scanAddress }) {
 
         {/* Code Examples */}
         <Section id="examples" icon={Globe} title="Code Examples">
-          {/* curl */}
           <Card>
-            <p className="text-sm font-medium text-slate-200 mb-1">curl</p>
-            <CodeBlock>
-{`# Analyze a saved .eml file
+            <CodeTabs tabs={[
+              {
+                label: 'curl',
+                code:
+`# Analyze a saved .eml file
 curl -X POST https://maildefender.xyz/api/v1/scan \\
-  -H "X-API-Key: YOUR_API_KEY" \\
+  -H "X-API-Key: mdef_your_key_here" \\
   -F "raw_email=<suspicious.eml"
 
 # Paste raw email inline
 curl -X POST https://maildefender.xyz/api/v1/scan \\
-  -H "X-API-Key: YOUR_API_KEY" \\
+  -H "X-API-Key: mdef_your_key_here" \\
   -F 'raw_email=From: attacker@evil.com
 To: victim@company.com
 Subject: Urgent: Verify your account
 
-Click here: http://phishing-site.com'`}
-            </CodeBlock>
-          </Card>
-
-          {/* Python */}
-          <Card>
-            <p className="text-sm font-medium text-slate-200 mb-1">Python</p>
-            <CodeBlock>
-{`import requests
+Click here: http://phishing-site.com'`,
+              },
+              {
+                label: 'Python',
+                code:
+`import requests
 
 with open("suspicious.eml", "r") as f:
     raw_email = f.read()
 
 response = requests.post(
     "https://maildefender.xyz/api/v1/scan",
-    headers={"X-API-Key": "YOUR_API_KEY"},
+    headers={"X-API-Key": "mdef_your_key_here"},
     data={"raw_email": raw_email},
 )
 
@@ -536,31 +635,49 @@ print(f"Reasoning: {result['reasoning']}")
 if result["tactics"]:
     print(f"Tactics: {', '.join(result['tactics'])}")
 
-# Access raw ML scores
+# Raw ML scores
 ml = result["ml_classifier"]
 print(f"ML class: {ml['threat_type']} (level {ml['threat_level']})")
 for cls, prob in ml["scores"].items():
-    print(f"  {cls}: {prob:.2%}")`}
-            </CodeBlock>
-          </Card>
-
-          {/* JavaScript */}
-          <Card>
-            <p className="text-sm font-medium text-slate-200 mb-1">JavaScript / Node.js</p>
-            <CodeBlock>
-{`const form = new FormData();
+    print(f"  {cls}: {prob:.2%}")`,
+              },
+              {
+                label: 'JavaScript',
+                code:
+`const form = new FormData();
 form.append('raw_email', rawEmailString);
 
 const res = await fetch('https://maildefender.xyz/api/v1/scan', {
   method: 'POST',
-  headers: { 'X-API-Key': 'YOUR_API_KEY' },
+  headers: { 'X-API-Key': 'mdef_your_key_here' },
   body: form,
 });
 
 const { score, level, verdict, reasoning, tactics, ml_classifier } = await res.json();
 console.log(\`\${level} (\${score}/100) — \${verdict}\`);
-console.log(\`ML class: \${ml_classifier.threat_type}\`);`}
-            </CodeBlock>
+console.log(\`ML class: \${ml_classifier.threat_type}\`);`,
+              },
+              {
+                label: 'PHP',
+                code:
+`<?php
+$ch = curl_init('https://maildefender.xyz/api/v1/scan');
+$raw = file_get_contents('suspicious.eml');
+
+curl_setopt_array($ch, [
+    CURLOPT_POST           => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER     => ['X-API-Key: mdef_your_key_here'],
+    CURLOPT_POSTFIELDS     => ['raw_email' => $raw],
+]);
+
+$body   = curl_exec($ch);
+$result = json_decode($body, true);
+
+echo "{$result['level']} ({$result['score']}/100) — {$result['verdict']}\\n";
+echo "Reasoning: {$result['reasoning']}\\n";`,
+              },
+            ]} />
           </Card>
 
           {/* Sample response */}
