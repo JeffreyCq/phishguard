@@ -40,7 +40,7 @@ function Section({ id, icon: Icon, title, children }) {
     <section id={id} className="scroll-mt-20">
       <div className="flex items-center gap-2.5 mb-4">
         <div className="w-7 h-7 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
-          <Icon className="w-3.5 h-3.5 text-indigo-400" />
+          <Icon className="w-3.5 h-3.5 text-white" />
         </div>
         <h2 className="text-lg font-semibold text-white">{title}</h2>
       </div>
@@ -144,7 +144,7 @@ export default function ApiDocs({ scanAddress }) {
                 { icon: Terminal, label: 'REST API',            desc: 'Integrate phishing detection in your own tools' },
               ].map(({ icon: Icon, label, desc }) => (
                 <div key={label} className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
-                  <Icon className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
+                  <Icon className="w-4 h-4 text-white mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-slate-200">{label}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
