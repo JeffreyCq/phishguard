@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Upload, FileText, Loader2, ShieldAlert } from 'lucide-react'
+import { Upload, FileText, Loader2, Mail } from 'lucide-react'
 
 // Estimated analysis stages with approximate timing
 const STAGES = [
@@ -99,7 +99,7 @@ export default function EmailUpload({ onResult, onLoading }) {
       {/* Logo */}
       <div className="text-center mb-10">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 mb-4">
-          <ShieldAlert className="w-8 h-8 text-indigo-400" />
+          <Mail className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-3xl font-bold text-white tracking-tight">MailDefender</h1>
         <p className="text-slate-400 mt-2 text-sm">AI-powered phishing email analyzer</p>

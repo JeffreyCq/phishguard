@@ -8,7 +8,7 @@ import IpResults from './components/IpResults'
 import AiAnalysis from './components/AiAnalysis'
 import ScoreBreakdown from './components/ScoreBreakdown'
 import ApiDocs from './components/ApiDocs'
-import { RotateCcw, Shield, Globe, Server, Brain, Activity, Paperclip, BookOpen, Mail } from 'lucide-react'
+import { RotateCcw, Shield, Globe, Server, Brain, Activity, Paperclip, BookOpen } from 'lucide-react'
 
 const SCAN_TABS = [
   { id: 'overview', label: 'Overview',    icon: Activity },
@@ -35,7 +35,12 @@ export default function App() {
             onClick={reset}
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           >
-            <Mail className="h-8 w-8 text-white" />
+            <img
+              src="/logomd.png"
+              alt="MailDefender"
+              className="h-8 w-auto"
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
             <span className="text-slate-600 text-xs hidden sm:block">Email Threat Analyzer</span>
           </button>
 
