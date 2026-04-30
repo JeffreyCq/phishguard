@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Terminal, Mail, Key, Zap, Shield, Globe, Server, Brain, ChevronRight, Cpu } from 'lucide-react'
+import { Terminal, Key, Zap, Shield, Globe, Server, ChevronRight, Cpu } from 'lucide-react'
 
 // ── Reusable primitives ──────────────────────────────────────────────────────
 
@@ -116,16 +116,13 @@ function ResponseField({ field, type, description }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function ApiDocs({ scanAddress }) {
-  const address = scanAddress || 'scan@maildefender.xyz'
-
+export default function ApiDocs() {
   const navItems = [
     { id: 'overview',    label: 'Overview'       },
     { id: 'classifier',  label: 'ML Classifier'  },
     { id: 'auth',        label: 'Authentication' },
     { id: 'endpoints',   label: 'Endpoints'      },
     { id: 'response',    label: 'Response Schema'},
-    { id: 'email',       label: 'Email Forwarding'},
     { id: 'examples',    label: 'Code Examples'  },
   ]
 
@@ -168,7 +165,6 @@ export default function ApiDocs({ scanAddress }) {
               {[
                 { icon: Cpu,      label: 'DistilBERT / ONNX',  desc: 'Custom-trained NLP classifier — fast, local, no token costs' },
                 { icon: Shield,   label: 'Threat Intel',        desc: 'VirusTotal URL & IP checks + AbuseIPDB reputation' },
-                { icon: Mail,     label: 'Email Forwarding',    desc: `Forward to ${address} — get instant HTML report` },
                 { icon: Terminal, label: 'REST API',            desc: 'Integrate phishing detection in your own tools' },
               ].map(({ icon: Icon, label, desc }) => (
                 <div key={label} className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
@@ -392,33 +388,6 @@ export default function ApiDocs({ scanAddress }) {
             />
           </Card>
 
-          <Card>
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Admin</p>
-              <Badge color="red">X-Admin-Secret</Badge>
-            </div>
-            <EndpointRow
-              method="POST"
-              path="/admin/keys"
-              description="Issue a new API key. Returns the raw key once — store it securely. Accepts label and rate_limit fields."
-            />
-            <EndpointRow
-              method="GET"
-              path="/admin/keys"
-              description="List all issued keys showing prefix, label, active status, rate limit, and last-used timestamp. Raw key never returned."
-            />
-            <EndpointRow
-              method="DELETE"
-              path="/admin/keys/{prefix}"
-              description="Revoke a key by its 8-char prefix. Takes effect immediately."
-            />
-            <EndpointRow
-              method="GET"
-              path="/admin/export"
-              description="Export incorrectly-labelled scan feedback as CSV for model retraining."
-            />
-          </Card>
-
           {/* Health detail */}
           <Card>
             <div className="flex items-center gap-2 mb-3">
@@ -553,44 +522,6 @@ export default function ApiDocs({ scanAddress }) {
               </div>
             </Card>
           </div>
-        </Section>
-
-        {/* Email Forwarding */}
-        <Section id="email" icon={Mail} title="Email Forwarding">
-          <Card>
-            <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              The easiest way to use MailDefender. Forward any suspicious email to{' '}
-              <strong className="text-indigo-300">{address}</strong> and you will receive an
-              HTML report directly in your inbox within seconds.
-            </p>
-            <div className="space-y-4">
-              {[
-                { step: '1', title: 'Forward the email', desc: `In your email client, use "Forward" on the suspicious email and send it to ${address}.` },
-                { step: '2', title: 'Wait a few seconds', desc: 'MailDefender receives it, runs the full pipeline (ML classifier + threat intel + risk score) and generates your report.' },
-                { step: '3', title: 'Check your inbox', desc: 'You receive an HTML email with the risk level, verdict, detected tactics, red flags, and a clear recommendation.' },
-              ].map(({ step, title, desc }) => (
-                <div key={step} className="flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-xs text-indigo-400 font-bold">{step}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-200">{title}</p>
-                    <p className="text-sm text-slate-400 mt-0.5">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">SMTP Setup (self-hosting)</p>
-              <div className="space-y-1 text-xs font-mono text-slate-400">
-                <div><span className="text-slate-600">SMTP_HOST=</span><span className="text-green-400">smtp.resend.com</span></div>
-                <div><span className="text-slate-600">SMTP_PORT=</span><span className="text-green-400">587</span></div>
-                <div><span className="text-slate-600">SMTP_USER=</span><span className="text-green-400">resend</span></div>
-                <div><span className="text-slate-600">SMTP_PASSWORD=</span><span className="text-green-400">re_your_api_key</span></div>
-                <div><span className="text-slate-600">SMTP_FROM=</span><span className="text-green-400">scan@maildefender.xyz</span></div>
-              </div>
-            </div>
-          </Card>
         </Section>
 
         {/* Code Examples */}
