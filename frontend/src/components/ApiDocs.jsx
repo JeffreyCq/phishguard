@@ -407,7 +407,7 @@ export default function ApiDocs() {
   },
   "public_api_enabled": true,
   "email_forwarding": true,
-  "email_scan_address": "${address}"
+  "email_scan_address": "scan@maildefender.xyz"
 }`}
             </CodeBlock>
           </Card>
