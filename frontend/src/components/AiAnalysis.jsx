@@ -1,4 +1,5 @@
-import { Brain, AlertTriangle, CheckCircle, HelpCircle, ShieldAlert, Mail, MailX } from 'lucide-react'
+import { useState } from 'react'
+import { Brain, AlertTriangle, CheckCircle, CheckCircle2, HelpCircle, ShieldAlert, Mail, MailX, ThumbsUp, ThumbsDown } from 'lucide-react'
 
 // ── Phishing config ──────────────────────────────────────────────────────────
 const VERDICT_CONFIG = {
@@ -17,7 +18,24 @@ const SPAM_CONFIG = {
   UNKNOWN:     { icon: HelpCircle, cls: 'text-slate-400', bg: 'bg-slate-800',    border: 'border-slate-700',     label: 'UNKNOWN' },
 }
 
-export default function AiAnalysis({ ai }) {
+export default function AiAnalysis({ ai, scanId }) {
+  const [fb, setFb] = useState({ status: 'idle', isCorrect: null, trueLabel: '' })
+
+  const submitFeedback = async (isCorrect, trueLabel) => {
+    if (!scanId) return
+    setFb(f => ({ ...f, status: 'loading', isCorrect }))
+    const form = new FormData()
+    form.append('is_correct', isCorrect)
+    if (trueLabel) form.append('true_label', trueLabel)
+    try {
+      const res = await fetch(`/feedback/${scanId}`, { method: 'POST', body: form })
+      if (!res.ok) throw new Error()
+      setFb({ status: 'done', isCorrect, trueLabel })
+    } catch {
+      setFb(f => ({ ...f, status: 'error' }))
+    }
+  }
+
   if (!ai) return null
 
   if (ai.status === 'not_configured') {
@@ -139,6 +157,75 @@ export default function AiAnalysis({ ai }) {
         <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
           <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Recommendation</p>
           <p className="text-slate-300 text-sm">{ai.recommendation}</p>
+        </div>
+      )}
+
+      {/* ── Feedback ── */}
+      {scanId && (
+        <div className="pt-4 border-t border-slate-800">
+          <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Was this analysis correct?</p>
+
+          {fb.status === 'done' ? (
+            <div className="flex items-center gap-2 text-sm text-green-400">
+              <CheckCircle2 className="w-4 h-4" />
+              Feedback recorded — helps improve the model.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => submitFeedback(true, null)}
+                  disabled={fb.status === 'loading'}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
+                    fb.isCorrect === true
+                      ? 'bg-green-500/20 border-green-500/40 text-green-300'
+                      : 'border-slate-700 text-slate-400 hover:border-green-500/40 hover:text-green-400'
+                  }`}
+                >
+                  <ThumbsUp className="w-3.5 h-3.5" /> Correct
+                </button>
+                <button
+                  onClick={() => setFb(f => ({ ...f, isCorrect: false, status: 'idle' }))}
+                  disabled={fb.status === 'loading'}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
+                    fb.isCorrect === false
+                      ? 'bg-red-500/20 border-red-500/40 text-red-300'
+                      : 'border-slate-700 text-slate-400 hover:border-red-500/40 hover:text-red-400'
+                  }`}
+                >
+                  <ThumbsDown className="w-3.5 h-3.5" /> Incorrect
+                </button>
+              </div>
+
+              {fb.isCorrect === false && (
+                <div className="space-y-2">
+                  <select
+                    value={fb.trueLabel}
+                    onChange={e => setFb(f => ({ ...f, trueLabel: e.target.value }))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">Select true classification...</option>
+                    <option value="legitimate">legitimate — safe email</option>
+                    <option value="spam">spam — unsolicited bulk</option>
+                    <option value="phishing">phishing — credential harvesting</option>
+                    <option value="spear_phishing">spear_phishing — targeted attack</option>
+                    <option value="whaling">whaling — executive targeting</option>
+                  </select>
+                  <button
+                    onClick={() => submitFeedback(false, fb.trueLabel)}
+                    disabled={!fb.trueLabel || fb.status === 'loading'}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 text-xs hover:bg-indigo-600/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {fb.status === 'loading' ? 'Submitting...' : 'Submit correction'}
+                  </button>
+                </div>
+              )}
+
+              {fb.status === 'error' && (
+                <p className="text-xs text-red-400">Failed to submit feedback. Try again.</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -96,6 +96,15 @@ async def health():
     }
 
 
+@app.post("/reload", tags=["Admin"])
+async def reload_model():
+    """Reload the ONNX model from disk — call after deploying a retrained model."""
+    global _classifier
+    _classifier = ThreatClassifier()
+    _classifier._load()
+    return {"status": "ok", "message": "Model reloaded from disk"}
+
+
 @app.post("/classify", response_model=ClassifyResponse, tags=["Classifier"])
 async def classify(req: ClassifyRequest):
     # Build a temporary preprocessor from the request's executive list

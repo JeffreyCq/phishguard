@@ -176,7 +176,7 @@ export default function App() {
                   {activeTab === 'headers' && <HeaderAnalysis headers={result.headers} />}
                   {activeTab === 'urls'    && <UrlResults     urls={result.urls} />}
                   {activeTab === 'ips'     && <IpResults      ips={result.ips} />}
-                  {activeTab === 'ai'      && <AiAnalysis     ai={result.ai_analysis} />}
+                  {activeTab === 'ai'      && <AiAnalysis     ai={result.ai_analysis} scanId={result.scan_id} />}
                 </div>
               </div>
             )}

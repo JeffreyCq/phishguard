@@ -26,6 +26,8 @@ services:
       # SMTP inbound listener
       - SMTP_LISTEN_PORT=2525
       - SMTP_LISTEN_HOST=0.0.0.0
+    volumes:
+      - maildefender_db:/data
     restart: unless-stopped
 
   # ─── React frontend (Nginx) ───────────────────────────────────────────────
@@ -36,3 +38,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  maildefender_db:

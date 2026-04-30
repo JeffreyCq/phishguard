@@ -1,6 +1,8 @@
 import asyncio
+import hashlib
 import logging
 import os
+import uuid as _uuid_mod
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -10,8 +12,12 @@ load_dotenv()
 import aiohttp
 from fastapi import FastAPI, File, Form, HTTPException, Header, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from typing import Optional
 
+from database import init_db, AsyncSessionLocal
+from models import Scan, Feedback
 from parsers.email_parser import parse_email
 from scanners import abuseipdb, virustotal
 from scanners.ai_analyzer import analyze_email, ML_SERVICE_URL
@@ -42,6 +48,7 @@ async def _handle_forwarded_email(sender_address: str, raw_bytes: bytes):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await init_db()
     loop = asyncio.get_event_loop()
     set_analysis_callback(_handle_forwarded_email)
     smtp_controller = start_smtp_server(loop)
@@ -102,6 +109,43 @@ def _require_api_key(x_api_key: Optional[str]):
         raise HTTPException(503, "Public API is not enabled on this server.")
     if x_api_key != required:
         raise HTTPException(401, "Invalid or missing API key. Pass it as X-API-Key header.")
+
+
+# ---------------------------------------------------------------------------
+# DB helpers
+# ---------------------------------------------------------------------------
+
+async def _persist_scan(raw: bytes | str, data: dict) -> str:
+    raw_str = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw
+    email_hash = hashlib.sha256(raw_str.encode()).hexdigest()
+    scan_id = str(_uuid_mod.uuid4())
+
+    parsed = data["parsed"]
+    ai     = data["ai_result"]
+    risk   = data["risk"]
+
+    try:
+        async with AsyncSessionLocal() as session:
+            scan = Scan(
+                scan_id       = scan_id,
+                email_hash    = email_hash,
+                subject       = (parsed["headers"].get("subject") or "")[:512],
+                sender        = (parsed["headers"].get("from") or "")[:256],
+                body_text     = parsed.get("body_text", ""),
+                verdict       = ai.get("verdict", ""),
+                spam_verdict  = ai.get("spam_verdict", ""),
+                confidence    = ai.get("confidence", 0),
+                threat_type   = ai.get("ml_threat_type", ""),
+                risk_score    = risk.get("score", 0),
+                risk_level    = risk.get("level", ""),
+                model_version = "distilbert-maildefender-v1",
+            )
+            session.add(scan)
+            await session.commit()
+    except Exception as exc:
+        logger.warning("Could not persist scan: %s", exc)
+
+    return scan_id
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +258,10 @@ async def analyze(
     urls   = data["urls"]
     ips    = data["ips"]
 
+    scan_id = await _persist_scan(raw, data)
+
     return {
+        "scan_id":        scan_id,
         "risk":           data["risk"],
         "headers":        parsed["headers"],
         "urls":           _annotate_urls(urls, data["vt_url_results"]),
@@ -283,6 +330,8 @@ async def public_scan(
     ai   = data["ai_result"]
     risk = data["risk"]
 
+    scan_id = await _persist_scan(raw_email, data)
+
     flagged_urls = sum(1 for r in data["vt_url_results"] if r.get("flagged"))
     flagged_ips  = sum(
         1 for vt, ab in zip(data["vt_ip_results"], data["abuse_results"])
@@ -291,6 +340,7 @@ async def public_scan(
     headers = data["parsed"]["headers"]
 
     return {
+        "scan_id":        scan_id,
         "score":          risk["score"],
         "level":          risk["level"],
         "verdict":        ai.get("verdict", "UNKNOWN"),
@@ -311,6 +361,73 @@ async def public_scan(
             "from_reply_to_mismatch": headers.get("from_reply_to_mismatch", False),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Feedback endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/feedback/{scan_id}", tags=["Feedback"])
+async def submit_feedback(
+    scan_id: str,
+    is_correct: bool = Form(...),
+    true_label: Optional[str] = Form(default=None),
+    notes: Optional[str] = Form(default=None),
+):
+    """Record whether the model verdict was correct. If not, provide the true label."""
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(Scan).where(Scan.scan_id == scan_id))
+        if not result.scalar_one_or_none():
+            raise HTTPException(404, "Scan not found")
+
+        fb = Feedback(
+            scan_id    = scan_id,
+            is_correct = is_correct,
+            true_label = true_label,
+            notes      = notes,
+        )
+        session.add(fb)
+        await session.commit()
+
+    return {"status": "ok", "scan_id": scan_id}
+
+
+@app.get("/admin/export", tags=["Feedback"])
+async def export_feedback(
+    x_api_key: Optional[str] = Header(default=None),
+):
+    """Export all corrected feedback as CSV for retraining. Requires API key."""
+    _require_api_key(x_api_key)
+
+    import csv, io
+    async with AsyncSessionLocal() as session:
+        rows = (await session.execute(
+            select(Scan, Feedback)
+            .join(Feedback, Scan.scan_id == Feedback.scan_id)
+            .where(Feedback.is_correct == False)
+            .where(Feedback.true_label.is_not(None))
+        )).all()
+
+    buf = io.StringIO()
+    w   = csv.writer(buf)
+    w.writerow(["subject", "sender", "body_text", "true_label", "original_verdict", "confidence", "scan_id"])
+    for scan, fb in rows:
+        w.writerow([
+            scan.subject or "",
+            scan.sender or "",
+            scan.body_text or "",
+            fb.true_label,
+            scan.verdict,
+            scan.confidence,
+            scan.scan_id,
+        ])
+
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=feedback_export.csv"},
+    )
 
 
 # ---------------------------------------------------------------------------
