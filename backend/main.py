@@ -17,7 +17,8 @@ from sqlalchemy import select
 from typing import Optional
 
 from database import init_db, AsyncSessionLocal
-from models import Scan, Feedback
+from models import Scan, Feedback, ApiKey
+from api_keys import generate_key, verify_key, require_admin
 from parsers.email_parser import parse_email
 from scanners import abuseipdb, virustotal
 from scanners.ai_analyzer import analyze_email, ML_SERVICE_URL
@@ -79,7 +80,7 @@ combined with real-time threat intelligence from VirusTotal and AbuseIPDB.
 
 ### Authentication
 The public `/api/v1/scan` endpoint requires an `X-API-Key` header.
-Set the `PUBLIC_API_KEY` environment variable on the server to enable it.
+Keys are issued via `POST /admin/keys` using your `ADMIN_SECRET`.
 """
 
 app = FastAPI(
@@ -100,15 +101,11 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# Auth helper
+# Auth helper (now DB-backed — see api_keys.py)
 # ---------------------------------------------------------------------------
 
-def _require_api_key(x_api_key: Optional[str]):
-    required = os.getenv("PUBLIC_API_KEY", "")
-    if not required:
-        raise HTTPException(503, "Public API is not enabled on this server.")
-    if x_api_key != required:
-        raise HTTPException(401, "Invalid or missing API key. Pass it as X-API-Key header.")
+async def _require_api_key(x_api_key: Optional[str]) -> ApiKey:
+    return await verify_key(x_api_key)
 
 
 # ---------------------------------------------------------------------------
@@ -223,7 +220,7 @@ async def health():
             "urlscan":          bool(os.getenv("URLSCAN_API_KEY")),
             "abuseipdb":        bool(os.getenv("ABUSEIPDB_API_KEY")),
         },
-        "public_api_enabled":    bool(os.getenv("PUBLIC_API_KEY")),
+        "public_api_enabled":    bool(os.getenv("ADMIN_SECRET")),
         "email_forwarding":      bool(os.getenv("SMTP_HOST")),
         "email_scan_address":    os.getenv("SMTP_FROM", ""),
     }
@@ -321,7 +318,7 @@ async def public_scan(
     | `auth.dmarc` | string | DMARC result: `pass` · `fail` · `none` |
     | `auth.from_reply_to_mismatch` | boolean | From and Reply-To domains differ |
     """
-    _require_api_key(x_api_key)
+    await _require_api_key(x_api_key)
 
     if not raw_email.strip():
         raise HTTPException(400, "raw_email is empty")
@@ -392,12 +389,12 @@ async def submit_feedback(
     return {"status": "ok", "scan_id": scan_id}
 
 
-@app.get("/admin/export", tags=["Feedback"])
+@app.get("/admin/export", tags=["Admin"])
 async def export_feedback(
-    x_api_key: Optional[str] = Header(default=None),
+    x_admin_secret: Optional[str] = Header(default=None),
 ):
-    """Export all corrected feedback as CSV for retraining. Requires API key."""
-    _require_api_key(x_api_key)
+    """Export all corrected feedback as CSV for retraining. Requires X-Admin-Secret."""
+    require_admin(x_admin_secret)
 
     import csv, io
     async with AsyncSessionLocal() as session:
@@ -428,6 +425,84 @@ async def export_feedback(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=feedback_export.csv"},
     )
+
+
+# ---------------------------------------------------------------------------
+# Admin — API key management
+# ---------------------------------------------------------------------------
+
+@app.post("/admin/keys", tags=["Admin"], status_code=201)
+async def create_api_key(
+    label: str = Form(..., description="Human-readable label for this key (owner name, app, etc.)"),
+    rate_limit: int = Form(default=1000, description="Max requests per day"),
+    x_admin_secret: Optional[str] = Header(default=None),
+):
+    """
+    Issue a new API key. **The raw key is returned once — store it securely.**
+    Subsequent calls show only the 8-char prefix for identification.
+    """
+    require_admin(x_admin_secret)
+
+    raw, prefix, key_hash = generate_key()
+
+    async with AsyncSessionLocal() as session:
+        session.add(ApiKey(
+            prefix=prefix,
+            key_hash=key_hash,
+            label=label,
+            rate_limit=rate_limit,
+        ))
+        await session.commit()
+
+    return {
+        "key": raw,
+        "prefix": prefix,
+        "label": label,
+        "rate_limit": rate_limit,
+        "warning": "Store this key now — it will not be shown again.",
+    }
+
+
+@app.get("/admin/keys", tags=["Admin"])
+async def list_api_keys(
+    x_admin_secret: Optional[str] = Header(default=None),
+):
+    """List all API keys (prefix + metadata only, never raw key)."""
+    require_admin(x_admin_secret)
+
+    async with AsyncSessionLocal() as session:
+        rows = (await session.execute(select(ApiKey).order_by(ApiKey.created_at))).scalars().all()
+
+    return [
+        {
+            "prefix":       k.prefix,
+            "label":        k.label,
+            "is_active":    k.is_active,
+            "rate_limit":   k.rate_limit,
+            "created_at":   k.created_at,
+            "last_used_at": k.last_used_at,
+        }
+        for k in rows
+    ]
+
+
+@app.delete("/admin/keys/{prefix}", tags=["Admin"])
+async def revoke_api_key(
+    prefix: str,
+    x_admin_secret: Optional[str] = Header(default=None),
+):
+    """Revoke an API key by its 8-char prefix. Immediate effect."""
+    require_admin(x_admin_secret)
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(ApiKey).where(ApiKey.prefix == prefix))
+        api_key = result.scalar_one_or_none()
+        if api_key is None:
+            raise HTTPException(404, f"No key with prefix '{prefix}'")
+        api_key.is_active = False
+        await session.commit()
+
+    return {"status": "revoked", "prefix": prefix}
 
 
 # ---------------------------------------------------------------------------

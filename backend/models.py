@@ -8,6 +8,19 @@ def _new_uuid() -> str:
     return str(uuid.uuid4())
 
 
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+
+    id           = Column(Integer, primary_key=True, autoincrement=True)
+    prefix       = Column(String(8),  unique=True, nullable=False, index=True)
+    key_hash     = Column(String(64), unique=True, nullable=False)
+    label        = Column(String(128), nullable=False, default="")
+    is_active    = Column(Boolean, nullable=False, default=True)
+    rate_limit   = Column(Integer, nullable=False, default=1000)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)
+
+
 class Scan(Base):
     __tablename__ = "scans"
 
