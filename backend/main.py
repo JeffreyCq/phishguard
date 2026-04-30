@@ -13,7 +13,7 @@ import aiohttp
 from fastapi import FastAPI, File, Form, HTTPException, Header, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import select, text
 from typing import Optional
 
 from database import init_db, AsyncSessionLocal
@@ -112,7 +112,7 @@ async def _require_api_key(x_api_key: Optional[str]) -> ApiKey:
 # DB helpers
 # ---------------------------------------------------------------------------
 
-async def _persist_scan(raw: bytes | str, data: dict) -> str:
+async def _persist_scan(raw: bytes | str, data: dict, source: str = "unknown") -> str:
     raw_str = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw
     email_hash = hashlib.sha256(raw_str.encode()).hexdigest()
     scan_id = str(_uuid_mod.uuid4())
@@ -136,6 +136,7 @@ async def _persist_scan(raw: bytes | str, data: dict) -> str:
                 risk_score    = risk.get("score", 0),
                 risk_level    = risk.get("level", ""),
                 model_version = "distilbert-maildefender-v1",
+                source        = source,
             )
             session.add(scan)
             await session.commit()
@@ -243,10 +244,12 @@ async def analyze(
         if not content:
             raise HTTPException(400, "Uploaded file is empty")
         raw = content
+        source = "file"
     elif raw_email:
         if not raw_email.strip():
             raise HTTPException(400, "Email text is empty")
         raw = raw_email
+        source = "paste"
     else:
         raise HTTPException(400, "Provide either a file upload or raw_email text")
 
@@ -255,7 +258,7 @@ async def analyze(
     urls   = data["urls"]
     ips    = data["ips"]
 
-    scan_id = await _persist_scan(raw, data)
+    scan_id = await _persist_scan(raw, data, source=source)
 
     return {
         "scan_id":        scan_id,
@@ -327,7 +330,7 @@ async def public_scan(
     ai   = data["ai_result"]
     risk = data["risk"]
 
-    scan_id = await _persist_scan(raw_email, data)
+    scan_id = await _persist_scan(raw_email, data, source="api")
 
     flagged_urls = sum(1 for r in data["vt_url_results"] if r.get("flagged"))
     flagged_ips  = sum(
@@ -484,6 +487,54 @@ async def list_api_keys(
         }
         for k in rows
     ]
+
+
+@app.get("/admin/stats", tags=["Admin"])
+async def get_stats(
+    x_admin_secret: Optional[str] = Header(default=None),
+):
+    """Usage statistics: scan counts, source breakdown, verdict distribution, daily trends."""
+    require_admin(x_admin_secret)
+
+    async with AsyncSessionLocal() as session:
+        total = (await session.execute(text("SELECT COUNT(*) FROM scans"))).scalar()
+        last_7 = (await session.execute(text(
+            "SELECT COUNT(*) FROM scans WHERE created_at >= datetime('now', '-7 days')"
+        ))).scalar()
+        last_30 = (await session.execute(text(
+            "SELECT COUNT(*) FROM scans WHERE created_at >= datetime('now', '-30 days')"
+        ))).scalar()
+        by_source = (await session.execute(text(
+            "SELECT COALESCE(source, 'unknown') as src, COUNT(*) as cnt FROM scans GROUP BY src ORDER BY cnt DESC"
+        ))).fetchall()
+        by_verdict = (await session.execute(text(
+            "SELECT COALESCE(verdict, 'UNKNOWN') as v, COUNT(*) as cnt FROM scans GROUP BY v ORDER BY cnt DESC"
+        ))).fetchall()
+        by_risk_level = (await session.execute(text(
+            "SELECT COALESCE(risk_level, 'UNKNOWN') as lvl, COUNT(*) as cnt FROM scans GROUP BY lvl ORDER BY cnt DESC"
+        ))).fetchall()
+        daily = (await session.execute(text(
+            "SELECT date(created_at) as day, COUNT(*) as cnt FROM scans "
+            "WHERE created_at >= datetime('now', '-30 days') GROUP BY day ORDER BY day"
+        ))).fetchall()
+        recent = (await session.execute(text(
+            "SELECT scan_id, COALESCE(verdict,'UNKNOWN'), risk_score, COALESCE(source,'unknown'), created_at "
+            "FROM scans ORDER BY created_at DESC LIMIT 10"
+        ))).fetchall()
+
+    return {
+        "total_scans":   total,
+        "last_7_days":   last_7,
+        "last_30_days":  last_30,
+        "by_source":     [{"source": r[0], "count": r[1]} for r in by_source],
+        "by_verdict":    [{"verdict": r[0], "count": r[1]} for r in by_verdict],
+        "by_risk_level": [{"level": r[0], "count": r[1]} for r in by_risk_level],
+        "daily_counts":  [{"date": r[0], "count": r[1]} for r in daily],
+        "recent_scans":  [
+            {"scan_id": r[0], "verdict": r[1], "risk_score": r[2], "source": r[3], "created_at": str(r[4])}
+            for r in recent
+        ],
+    }
 
 
 @app.delete("/admin/keys/{prefix}", tags=["Admin"])

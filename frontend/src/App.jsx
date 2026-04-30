@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import EmailUpload from './components/EmailUpload'
+import StatsPage from './components/StatsPage'
 import RiskGauge from './components/RiskGauge'
 import ThreatIndicators from './components/ThreatIndicators'
 import HeaderAnalysis from './components/HeaderAnalysis'
@@ -21,9 +22,24 @@ const SCAN_TABS = [
 export default function App() {
   const [result,    setResult]    = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
-  const [view,      setView]      = useState('scanner')  // 'scanner' | 'docs'
+  const [view,      setView]      = useState(() =>
+    window.location.hash === '#stats' ? 'stats' : 'scanner'
+  )  // 'scanner' | 'docs' | 'stats'
 
-  const reset = () => { setResult(null); setActiveTab('overview'); setView('scanner') }
+  useEffect(() => {
+    const onHashChange = () => {
+      if (window.location.hash === '#stats') setView('stats')
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  const reset = () => {
+    setResult(null)
+    setActiveTab('overview')
+    setView('scanner')
+    history.replaceState(null, '', window.location.pathname)
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200">
@@ -71,6 +87,9 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-10">
+
+        {/* ── Stats view ── */}
+        {view === 'stats' && <StatsPage />}
 
         {/* ── API Docs view ── */}
         {view === 'docs' && <ApiDocs />}

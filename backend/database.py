@@ -1,4 +1,5 @@
 import os
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -16,3 +17,7 @@ async def init_db():
         os.makedirs(dir_, exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        try:
+            await conn.execute(text("ALTER TABLE scans ADD COLUMN source VARCHAR(16) DEFAULT 'unknown'"))
+        except Exception:
+            pass  # Column already exists

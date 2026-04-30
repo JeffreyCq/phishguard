@@ -37,6 +37,7 @@ class Scan(Base):
     risk_score    = Column(Integer)
     risk_level    = Column(String(16))
     model_version = Column(String(64))
+    source        = Column(String(16), default='unknown')
     created_at    = Column(DateTime, default=datetime.utcnow)
 
 
