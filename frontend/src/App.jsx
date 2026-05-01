@@ -98,7 +98,35 @@ export default function App() {
         {view === 'scanner' && (
           <>
             {!result ? (
-              <EmailUpload onResult={setResult} onLoading={() => {}} />
+              <>
+                {/* Hero — on-page SEO + value prop */}
+                <div className="text-center mb-10">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium mb-4">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                    Free · Open Source · No account required
+                  </div>
+                  <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 tracking-tight">
+                    Is this email a phishing attempt?
+                  </h1>
+                  <p className="text-slate-400 text-base max-w-xl mx-auto leading-relaxed">
+                    Paste any suspicious email and get an instant AI-powered threat report —
+                    detects <span className="text-slate-200">phishing</span>,{' '}
+                    <span className="text-slate-200">spear-phishing</span>,{' '}
+                    <span className="text-slate-200">whaling</span>, and{' '}
+                    <span className="text-slate-200">spam</span>.
+                    No sign-up. Completely free.
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-4 mt-5 text-xs text-slate-500">
+                    {[
+                      '🤖 Custom DistilBERT classifier',
+                      '🌐 VirusTotal URL scanning',
+                      '🔍 SPF · DKIM · DMARC analysis',
+                      '🔌 REST API available',
+                    ].map(f => <span key={f}>{f}</span>)}
+                  </div>
+                </div>
+                <EmailUpload onResult={setResult} onLoading={() => {}} />
+              </>
             ) : (
               <div className="space-y-6 fade-up">
                 {/* Top row: score + summary */}
