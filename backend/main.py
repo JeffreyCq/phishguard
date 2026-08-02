@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import json
 import logging
 import os
 import uuid as _uuid_mod
@@ -10,10 +11,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import aiohttp
-from fastapi import FastAPI, File, Form, HTTPException, Header, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Header, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from typing import Optional
 
@@ -300,13 +300,6 @@ _SCAN_RESPONSE_DESCRIPTION = """
 """
 
 
-class ScanRequest(BaseModel):
-    raw_email: str = Field(
-        ...,
-        description="Complete raw email content (RFC 5322 format — headers + blank line + body). Plain pasted text also works.",
-    )
-
-
 async def _build_scan_response(raw_email: str) -> dict:
     if not raw_email.strip():
         raise HTTPException(400, "raw_email is empty")
@@ -386,7 +379,7 @@ async def public_scan(
     tags=["Public API"],
 )
 async def public_scan_json(
-    payload: ScanRequest,
+    request: Request,
     x_api_key: Optional[str] = Header(
         default=None,
         description="Your API key. Set PUBLIC_API_KEY on the server to enable this endpoint.",
@@ -396,6 +389,10 @@ async def public_scan_json(
     Identical to `/api/v1/scan`, but accepts `application/json` instead of
     `multipart/form-data` — useful for webhook integrations (Jira Automation,
     Zapier, generic "send web request" actions) that can only emit JSON.
+
+    Parsed leniently (`json.loads(..., strict=False)`) because tools like
+    Jira Automation interpolate ticket text with real newlines instead of
+    escaped `\\n`, which strict JSON rejects.
 
     **Request body:**
     ```json
@@ -407,7 +404,17 @@ async def public_scan_json(
     {_SCAN_RESPONSE_DESCRIPTION}
     """
     await _require_api_key(x_api_key)
-    return await _build_scan_response(payload.raw_email)
+
+    body = await request.body()
+    try:
+        payload = json.loads(body.decode("utf-8"), strict=False)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise HTTPException(400, f"Invalid JSON body: {exc}")
+
+    if not isinstance(payload, dict) or not isinstance(payload.get("raw_email"), str):
+        raise HTTPException(400, "JSON body must be an object with a string 'raw_email' field")
+
+    return await _build_scan_response(payload["raw_email"])
 
 
 # ---------------------------------------------------------------------------
