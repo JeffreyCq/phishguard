@@ -13,6 +13,7 @@ import aiohttp
 from fastapi import FastAPI, File, Form, HTTPException, Header, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from typing import Optional
 
@@ -277,52 +278,36 @@ async def analyze(
 # Public REST API
 # ---------------------------------------------------------------------------
 
-@app.post(
-    "/api/v1/scan",
-    summary="Scan an email for phishing threats",
-    response_description="Structured threat report with risk score, AI verdict, and indicators",
-    tags=["Public API"],
-)
-async def public_scan(
-    raw_email: str = Form(
+_SCAN_RESPONSE_DESCRIPTION = """
+| Field | Type | Description |
+|-------|------|-------------|
+| `score` | integer 0–100 | Overall risk score |
+| `level` | string | `LOW` · `MEDIUM` · `HIGH` · `CRITICAL` |
+| `verdict` | string | AI verdict: `SAFE` · `LIKELY_SAFE` · `SUSPICIOUS` · `PHISHING` |
+| `confidence` | integer 0–100 | AI confidence in the verdict |
+| `reasoning` | string | Plain-English explanation |
+| `tactics` | string[] | Detected social engineering tactics |
+| `red_flags` | string[] | Specific concerning elements |
+| `recommendation` | string | Suggested action for the end user |
+| `indicators` | string[] | Structural threat indicators |
+| `urls_total` | integer | Total URLs extracted from the email |
+| `urls_flagged` | integer | URLs flagged as malicious by VirusTotal |
+| `ips_flagged` | integer | IPs flagged by VirusTotal or AbuseIPDB |
+| `auth.spf` | string | SPF result: `pass` · `fail` · `softfail` · `none` |
+| `auth.dkim` | string | DKIM result: `pass` · `fail` · `none` |
+| `auth.dmarc` | string | DMARC result: `pass` · `fail` · `none` |
+| `auth.from_reply_to_mismatch` | boolean | From and Reply-To domains differ |
+"""
+
+
+class ScanRequest(BaseModel):
+    raw_email: str = Field(
         ...,
-        description="Complete raw email content (RFC 5322 format — headers + blank line + body)",
-    ),
-    x_api_key: Optional[str] = Header(
-        default=None,
-        description="Your API key. Set PUBLIC_API_KEY on the server to enable this endpoint.",
-    ),
-):
-    """
-    Analyze a raw email and receive a structured phishing threat report.
+        description="Complete raw email content (RFC 5322 format — headers + blank line + body). Plain pasted text also works.",
+    )
 
-    **Request format:** `multipart/form-data` with a single `raw_email` field
-    containing the full RFC 5322 email (paste from your email client's
-    "View Source" / "Show Original" option).
 
-    **Response fields:**
-
-    | Field | Type | Description |
-    |-------|------|-------------|
-    | `score` | integer 0–100 | Overall risk score |
-    | `level` | string | `LOW` · `MEDIUM` · `HIGH` · `CRITICAL` |
-    | `verdict` | string | AI verdict: `SAFE` · `LIKELY_SAFE` · `SUSPICIOUS` · `PHISHING` |
-    | `confidence` | integer 0–100 | AI confidence in the verdict |
-    | `reasoning` | string | Plain-English explanation |
-    | `tactics` | string[] | Detected social engineering tactics |
-    | `red_flags` | string[] | Specific concerning elements |
-    | `recommendation` | string | Suggested action for the end user |
-    | `indicators` | string[] | Structural threat indicators |
-    | `urls_total` | integer | Total URLs extracted from the email |
-    | `urls_flagged` | integer | URLs flagged as malicious by VirusTotal |
-    | `ips_flagged` | integer | IPs flagged by VirusTotal or AbuseIPDB |
-    | `auth.spf` | string | SPF result: `pass` · `fail` · `softfail` · `none` |
-    | `auth.dkim` | string | DKIM result: `pass` · `fail` · `none` |
-    | `auth.dmarc` | string | DMARC result: `pass` · `fail` · `none` |
-    | `auth.from_reply_to_mismatch` | boolean | From and Reply-To domains differ |
-    """
-    await _require_api_key(x_api_key)
-
+async def _build_scan_response(raw_email: str) -> dict:
     if not raw_email.strip():
         raise HTTPException(400, "raw_email is empty")
 
@@ -361,6 +346,68 @@ async def public_scan(
             "from_reply_to_mismatch": headers.get("from_reply_to_mismatch", False),
         },
     }
+
+
+@app.post(
+    "/api/v1/scan",
+    summary="Scan an email for phishing threats",
+    response_description="Structured threat report with risk score, AI verdict, and indicators",
+    tags=["Public API"],
+)
+async def public_scan(
+    raw_email: str = Form(
+        ...,
+        description="Complete raw email content (RFC 5322 format — headers + blank line + body)",
+    ),
+    x_api_key: Optional[str] = Header(
+        default=None,
+        description="Your API key. Set PUBLIC_API_KEY on the server to enable this endpoint.",
+    ),
+):
+    f"""
+    Analyze a raw email and receive a structured phishing threat report.
+
+    **Request format:** `multipart/form-data` with a single `raw_email` field
+    containing the full RFC 5322 email (paste from your email client's
+    "View Source" / "Show Original" option).
+
+    **Response fields:**
+
+    {_SCAN_RESPONSE_DESCRIPTION}
+    """
+    await _require_api_key(x_api_key)
+    return await _build_scan_response(raw_email)
+
+
+@app.post(
+    "/api/v1/scan-json",
+    summary="Scan an email for phishing threats (JSON body)",
+    response_description="Structured threat report with risk score, AI verdict, and indicators",
+    tags=["Public API"],
+)
+async def public_scan_json(
+    payload: ScanRequest,
+    x_api_key: Optional[str] = Header(
+        default=None,
+        description="Your API key. Set PUBLIC_API_KEY on the server to enable this endpoint.",
+    ),
+):
+    f"""
+    Identical to `/api/v1/scan`, but accepts `application/json` instead of
+    `multipart/form-data` — useful for webhook integrations (Jira Automation,
+    Zapier, generic "send web request" actions) that can only emit JSON.
+
+    **Request body:**
+    ```json
+    {{"raw_email": "From: attacker@evil.com\\n...full RFC 5322 email..."}}
+    ```
+
+    **Response fields:**
+
+    {_SCAN_RESPONSE_DESCRIPTION}
+    """
+    await _require_api_key(x_api_key)
+    return await _build_scan_response(payload.raw_email)
 
 
 # ---------------------------------------------------------------------------
