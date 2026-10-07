@@ -65,7 +65,7 @@ export default function AiAnalysis({ ai, scanId }) {
 
       {/* ── Phishing verdict ── */}
       <div>
-        <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Phishing Analysis</p>
+        <p className="label mb-2">Phishing Analysis</p>
         <div className={`flex items-center gap-3 p-4 rounded-xl border ${pcfg.bg} ${pcfg.border}`}>
           <PIcon className={`w-6 h-6 shrink-0 ${pcfg.cls}`} />
           <div className="flex-1">
@@ -91,7 +91,7 @@ export default function AiAnalysis({ ai, scanId }) {
       {/* ── Spam verdict ── */}
       {ai.spam_verdict && ai.spam_verdict !== 'UNKNOWN' && (
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Spam Analysis</p>
+          <p className="label mb-2">Spam Analysis</p>
           <div className={`flex items-center gap-3 p-4 rounded-xl border ${scfg.bg} ${scfg.border}`}>
             <SIcon className={`w-5 h-5 shrink-0 ${scfg.cls}`} />
             <div className="flex-1">
@@ -126,7 +126,7 @@ export default function AiAnalysis({ ai, scanId }) {
       {/* ── Tactics ── */}
       {ai.tactics?.length > 0 && (
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Tactics Detected</p>
+          <p className="label mb-2">Tactics Detected</p>
           <div className="flex flex-wrap gap-2">
             {ai.tactics.map((t, i) => (
               <span key={i} className="px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs text-slate-300">
@@ -140,7 +140,7 @@ export default function AiAnalysis({ ai, scanId }) {
       {/* ── Red flags ── */}
       {ai.red_flags?.length > 0 && (
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Red Flags</p>
+          <p className="label mb-2">Red Flags</p>
           <ul className="space-y-1">
             {ai.red_flags.map((flag, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
@@ -154,16 +154,16 @@ export default function AiAnalysis({ ai, scanId }) {
 
       {/* ── Recommendation ── */}
       {ai.recommendation && (
-        <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
-          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Recommendation</p>
+        <div className="p-3 rounded-lg bg-black/40 border border-white/10">
+          <p className="label mb-1">Recommendation</p>
           <p className="text-slate-300 text-sm">{ai.recommendation}</p>
         </div>
       )}
 
       {/* ── Feedback ── */}
       {scanId && (
-        <div className="pt-4 border-t border-slate-800">
-          <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Was this analysis correct?</p>
+        <div className="pt-4 border-t border-white/10">
+          <p className="label mb-3">Was this analysis correct?</p>
 
           {fb.status === 'done' ? (
             <div className="flex items-center gap-2 text-sm text-green-400">
@@ -176,7 +176,7 @@ export default function AiAnalysis({ ai, scanId }) {
                 <button
                   onClick={() => submitFeedback(true, null)}
                   disabled={fb.status === 'loading'}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-mono uppercase tracking-wider text-[11px] transition-all duration-300 ${
                     fb.isCorrect === true
                       ? 'bg-green-500/20 border-green-500/40 text-green-300'
                       : 'border-slate-700 text-slate-400 hover:border-green-500/40 hover:text-green-400'
@@ -187,7 +187,7 @@ export default function AiAnalysis({ ai, scanId }) {
                 <button
                   onClick={() => setFb(f => ({ ...f, isCorrect: false, status: 'idle' }))}
                   disabled={fb.status === 'loading'}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-mono uppercase tracking-wider text-[11px] transition-all duration-300 ${
                     fb.isCorrect === false
                       ? 'bg-red-500/20 border-red-500/40 text-red-300'
                       : 'border-slate-700 text-slate-400 hover:border-red-500/40 hover:text-red-400'
@@ -202,7 +202,7 @@ export default function AiAnalysis({ ai, scanId }) {
                   <select
                     value={fb.trueLabel}
                     onChange={e => setFb(f => ({ ...f, trueLabel: e.target.value }))}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
+                    className="field h-12 rounded-t-lg"
                   >
                     <option value="">Select true classification...</option>
                     <option value="legitimate">legitimate — safe email</option>
@@ -214,7 +214,7 @@ export default function AiAnalysis({ ai, scanId }) {
                   <button
                     onClick={() => submitFeedback(false, fb.trueLabel)}
                     disabled={!fb.trueLabel || fb.status === 'loading'}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 text-xs hover:bg-indigo-600/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="btn-primary min-h-[40px] text-xs"
                   >
                     {fb.status === 'loading' ? 'Submitting...' : 'Submit correction'}
                   </button>

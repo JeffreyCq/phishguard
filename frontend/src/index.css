@@ -2,34 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #020617;
-  color: #e2e8f0;
-  font-family: 'Inter', system-ui, sans-serif;
+@layer base {
+  html { color-scheme: dark; }
+  body {
+    @apply bg-void text-slate-200 font-body antialiased;
+  }
+  h1, h2, h3, h4 { @apply font-heading tracking-tight; }
+  :focus-visible { @apply outline-none ring-2 ring-btc ring-offset-2 ring-offset-void; }
+  ::selection { background: rgba(247, 147, 26, 0.35); color: #fff; }
+}
+
+@layer components {
+  /* Block: elevated card floating over the void */
+  .card {
+    @apply rounded-2xl border border-white/10 bg-matter/80 transition-all duration-300;
+  }
+  .card-hover {
+    @apply hover:-translate-y-1 hover:border-btc/50 hover:shadow-glow-card;
+  }
+  .glass {
+    @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-lg;
+  }
+  /* Mono uppercase technical label */
+  .label {
+    @apply font-mono text-[11px] uppercase tracking-widest text-stardust;
+  }
+  /* Pill buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full min-h-[44px] px-6
+           text-sm font-semibold uppercase tracking-wider transition-all duration-300
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+  }
+  .btn-primary {
+    @apply btn text-white bg-gradient-to-r from-burnt to-btc shadow-glow
+           hover:scale-105 hover:shadow-glow-lg;
+  }
+  .btn-outline {
+    @apply btn border-2 border-white/20 text-white hover:border-white hover:bg-white/10;
+  }
+  .btn-ghost {
+    @apply btn text-white hover:bg-white/10 hover:text-btc;
+  }
+  .gradient-text {
+    @apply bg-gradient-to-r from-btc to-gold bg-clip-text text-transparent;
+  }
+  /* Data-terminal input: bottom border only */
+  .field {
+    @apply w-full bg-black/50 border-0 border-b-2 border-white/20 px-4 py-2 text-sm text-white
+           placeholder:text-white/30 transition-all duration-200
+           focus-visible:border-btc focus-visible:shadow-[0_10px_20px_-10px_rgba(247,147,26,0.3)]
+           focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+}
+
+/* Fading blockchain grid */
+.bg-grid-pattern {
+  background-size: 50px 50px;
+  background-image:
+    linear-gradient(to right, rgba(30, 41, 59, 0.5) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 41, 59, 0.5) 1px, transparent 1px);
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+          mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0f172a; }
-::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
+::-webkit-scrollbar-track { background: #030304; }
+::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #F7931A; }
 
 /* Drag-over highlight */
 .drag-over {
-  border-color: #6366f1 !important;
-  background-color: rgba(99, 102, 241, 0.08) !important;
+  border-color: #F7931A !important;
+  background-color: rgba(247, 147, 26, 0.08) !important;
+  box-shadow: 0 0 30px -10px rgba(247, 147, 26, 0.4);
 }
 
-/* Score ring animation */
 @keyframes score-pop {
   0% { transform: scale(0.8); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
 .score-pop { animation: score-pop 0.4s ease-out; }
 
-/* Fade in cards */
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .fade-up { animation: fade-up 0.35s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-spin, .animate-ping, .animate-pulse, .score-pop, .fade-up {
+    animation: none !important;
+  }
+}

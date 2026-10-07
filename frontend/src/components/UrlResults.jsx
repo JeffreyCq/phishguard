@@ -44,7 +44,7 @@ export default function UrlResults({ urls }) {
             className={`p-3 rounded-lg border text-sm transition-colors ${
               isFlagged
                 ? 'bg-red-500/10 border-red-500/30'
-                : 'bg-slate-900 border-slate-800'
+                : 'bg-black/40 border-white/10'
             }`}
           >
             <div className="flex items-start gap-2">
@@ -57,7 +57,7 @@ export default function UrlResults({ urls }) {
                   href={entry.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-indigo-400 hover:text-indigo-300 break-all text-xs font-mono flex items-center gap-1"
+                  className="text-btc hover:text-gold break-all text-xs font-mono flex items-center gap-1"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {entry.url.length > 80 ? entry.url.slice(0, 80) + '…' : entry.url}

@@ -33,9 +33,9 @@ const SOURCE_TEXT = {
 
 function StatCard({ label, value, color = 'text-white' }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-      <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">{label}</p>
-      <p className={`text-4xl font-bold ${color}`}>{value}</p>
+    <div className="card p-6">
+      <p className="label mb-1">{label}</p>
+      <p className={`font-mono text-4xl font-medium ${color}`}>{value}</p>
     </div>
   )
 }
@@ -65,7 +65,7 @@ function DailyChart({ data }) {
       {data.map((d, i) => (
         <div
           key={i}
-          className="flex-1 bg-indigo-500/50 hover:bg-indigo-500 rounded-sm transition-colors cursor-default"
+          className="flex-1 bg-btc/50 hover:bg-btc rounded-sm transition-colors cursor-default"
           style={{ height: `${Math.max((d.count / max) * 112, 3)}px` }}
           title={`${d.date}: ${d.count}`}
         />
@@ -110,8 +110,8 @@ export default function StatsPage() {
     return (
       <div className="max-w-sm mx-auto mt-20">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 mb-4">
-            <Lock className="w-7 h-7 text-indigo-400" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-burnt/20 border border-burnt/50 shadow-glow mb-4">
+            <Lock className="w-7 h-7 text-btc" />
           </div>
           <h2 className="text-2xl font-bold text-white">Analytics</h2>
           <p className="text-slate-400 text-sm mt-1">Enter your admin secret</p>
@@ -123,14 +123,12 @@ export default function StatsPage() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && input && fetchStats(input)}
             placeholder="Admin secret..."
-            className="w-full rounded-xl bg-slate-900 border border-slate-700 text-slate-200
-              placeholder-slate-500 px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+            className="field h-12 rounded-t-lg"
           />
           <button
             onClick={() => fetchStats(input)}
             disabled={!input || loading}
-            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50
-              text-white font-semibold text-sm transition-colors"
+            className="btn-primary w-full"
           >
             {loading ? 'Authenticating...' : 'View Stats'}
           </button>
@@ -175,8 +173,8 @@ export default function StatsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 space-y-3">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Scan Source</p>
+        <div className="card p-6 space-y-3">
+          <p className="label">Scan Source</p>
           {stats.by_source.length
             ? stats.by_source.map(({ source, count }) => (
                 <DistBar key={source} label={source} count={count} total={totalBySource}
@@ -185,8 +183,8 @@ export default function StatsPage() {
             : <p className="text-slate-500 text-sm">No data yet</p>
           }
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 space-y-3">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Verdict Distribution</p>
+        <div className="card p-6 space-y-3">
+          <p className="label">Verdict Distribution</p>
           {stats.by_verdict.length
             ? stats.by_verdict.map(({ verdict, count }) => (
                 <DistBar key={verdict} label={verdict} count={count} total={totalByVerdict}
@@ -197,13 +195,13 @@ export default function StatsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-        <p className="text-xs text-slate-500 uppercase tracking-wide mb-4">Daily Scans — Last 30 Days</p>
+      <div className="card p-6">
+        <p className="label mb-4">Daily Scans — Last 30 Days</p>
         <DailyChart data={stats.daily_counts} />
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-        <p className="text-xs text-slate-500 uppercase tracking-wide mb-4">Recent Scans</p>
+      <div className="card p-6">
+        <p className="label mb-4">Recent Scans</p>
         <div className="space-y-0">
           {stats.recent_scans.length
             ? stats.recent_scans.map((scan) => (

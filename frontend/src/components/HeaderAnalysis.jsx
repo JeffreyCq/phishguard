@@ -9,7 +9,7 @@ function AuthBadge({ value }) {
 function Row({ label, value, highlight }) {
   if (!value) return null
   return (
-    <tr className={`border-b border-slate-800 ${highlight ? 'bg-red-500/5' : ''}`}>
+    <tr className={`border-b border-white/10 ${highlight ? 'bg-red-500/5' : ''}`}>
       <td className="py-2.5 pr-4 text-slate-500 text-xs font-medium whitespace-nowrap w-36">{label}</td>
       <td className="py-2.5 text-slate-300 text-sm break-all">{value}</td>
     </tr>
@@ -28,7 +28,7 @@ export default function HeaderAnalysis({ headers }) {
           { label: 'DKIM', value: headers.dkim },
           { label: 'DMARC', value: headers.dmarc },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-slate-900 rounded-lg border border-slate-800 p-3 text-center">
+          <div key={label} className="bg-black/40 rounded-lg border border-white/10 p-3 text-center">
             <p className="text-slate-500 text-xs mb-1">{label}</p>
             <AuthBadge value={value} />
           </div>

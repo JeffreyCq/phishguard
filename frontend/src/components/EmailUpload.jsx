@@ -95,27 +95,26 @@ export default function EmailUpload({ onResult, onLoading }) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto glass p-6 sm:p-8 shadow-glow-soft">
       {/* Logo */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 mb-4">
-          <Mail className="w-8 h-8 text-white" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-burnt/20 border border-burnt/50 mb-4 animate-float shadow-glow transition-shadow hover:shadow-glow-lg">
+          <Mail className="w-8 h-8 text-btc" />
         </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">MailDefender</h1>
-        <p className="text-slate-400 mt-2 text-sm">AI-powered phishing email analyzer</p>
+        <p className="label">AI-powered phishing email analyzer</p>
       </div>
 
       {/* Mode toggle */}
-      <div className="flex rounded-lg border border-slate-700 p-1 mb-6 bg-slate-900/50">
+      <div className="flex rounded-full border border-white/10 p-1 mb-6 bg-black/40">
         {['file', 'paste'].map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
             disabled={loading}
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+            className={`flex-1 min-h-[40px] rounded-full font-mono text-xs uppercase tracking-wider transition-all duration-300 ${
               mode === m
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-slate-400 hover:text-slate-200 disabled:opacity-40'
+                ? 'bg-gradient-to-r from-burnt to-btc text-white shadow-glow'
+                : 'text-stardust hover:text-white disabled:opacity-40'
             }`}
           >
             {m === 'file' ? 'Upload .eml File' : 'Paste Raw Email'}
@@ -125,8 +124,8 @@ export default function EmailUpload({ onResult, onLoading }) {
 
       {mode === 'file' ? (
         <div
-          className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all
-            ${dragging ? 'drag-over' : 'border-slate-700 hover:border-slate-500 bg-slate-900/30'}
+          className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300
+            ${dragging ? 'drag-over' : 'border-white/20 hover:border-btc/50 hover:shadow-glow-card bg-black/30'}
             ${loading ? 'pointer-events-none opacity-60' : ''}`}
           onClick={() => fileRef.current.click()}
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
@@ -141,13 +140,13 @@ export default function EmailUpload({ onResult, onLoading }) {
             onChange={(e) => handleFile(e.target.files[0])}
           />
           {loading
-            ? <Loader2 className="w-10 h-10 text-indigo-400 mx-auto animate-spin" />
-            : <Upload className="w-10 h-10 text-slate-500 mx-auto" />
+            ? <Loader2 className="w-10 h-10 text-btc mx-auto animate-spin" />
+            : <Upload className="w-10 h-10 text-btc/70 mx-auto" />
           }
-          <p className="mt-4 text-slate-300 font-medium">
+          <p className="mt-4 text-white font-heading font-medium text-lg">
             {filename ?? 'Drop your .eml file here'}
           </p>
-          <p className="text-slate-500 text-sm mt-1">or click to browse — .eml, .msg, .txt</p>
+          <p className="font-mono text-xs text-stardust mt-2">or click to browse — .eml, .msg, .txt</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -157,15 +156,12 @@ export default function EmailUpload({ onResult, onLoading }) {
             placeholder="Paste the full raw email here (including headers)..."
             rows={12}
             disabled={loading}
-            className="w-full rounded-xl bg-slate-900 border border-slate-700 text-slate-200
-              placeholder-slate-500 p-4 text-sm font-mono resize-none focus:outline-none
-              focus:border-indigo-500 transition-colors disabled:opacity-60"
+            className="field rounded-t-lg p-4 font-mono resize-none"
           />
           <button
             onClick={handlePaste}
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50
-              text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+            className="btn-primary w-full"
           >
             {loading
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</>
@@ -184,16 +180,17 @@ export default function EmailUpload({ onResult, onLoading }) {
               className="h-full rounded-full transition-all duration-500 ease-out"
               style={{
                 width: `${progress}%`,
-                background: 'linear-gradient(90deg, #6366f1, #818cf8)',
+                background: 'linear-gradient(90deg, #EA580C, #F7931A, #FFD600)',
+                boxShadow: '0 0 12px rgba(247,147,26,0.6)',
               }}
             />
           </div>
           {/* Label + percentage */}
           <div className="flex justify-between items-center">
-            <span className="text-xs text-slate-500 animate-pulse">
+            <span className="font-mono text-xs text-stardust animate-pulse">
               {getStageLabel(progress)}
             </span>
-            <span className="text-xs text-slate-600 font-mono tabular-nums">
+            <span className="text-xs text-btc font-mono tabular-nums">
               {Math.round(progress)}%
             </span>
           </div>
@@ -206,7 +203,7 @@ export default function EmailUpload({ onResult, onLoading }) {
         </div>
       )}
 
-      <p className="text-center text-slate-600 text-xs mt-6">
+      <p className="text-center font-mono text-[11px] text-stardust/70 mt-6">
         Emails are analyzed in memory and never stored on disk.
       </p>
     </div>

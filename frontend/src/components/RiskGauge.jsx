@@ -14,13 +14,13 @@ export default function RiskGauge({ score, level, color }) {
   const dash = (score / 100) * circumference
 
   return (
-    <div className={`rounded-2xl border ${c.border} ${c.bg} p-6 flex flex-col items-center score-pop`}>
-      <p className="text-slate-400 text-xs uppercase tracking-widest mb-4">Risk Score</p>
+    <div className={`rounded-2xl border ${c.border} ${c.bg} p-6 flex flex-col items-center score-pop backdrop-blur-lg`} style={{ boxShadow: `0 0 40px -12px ${c.ring}66` }}>
+      <p className="label mb-4">Risk Score</p>
 
       <div className="relative w-36 h-36">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
           {/* Track */}
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="#1e293b" strokeWidth="10" />
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="#1E293B" strokeWidth="10" />
           {/* Progress */}
           <circle
             cx="60" cy="60" r={radius}
@@ -29,20 +29,20 @@ export default function RiskGauge({ score, level, color }) {
             strokeWidth="10"
             strokeLinecap="round"
             strokeDasharray={`${dash} ${circumference}`}
-            style={{ transition: 'stroke-dasharray 0.6s ease-out' }}
+            style={{ transition: 'stroke-dasharray 0.6s ease-out', filter: `drop-shadow(0 0 6px ${c.ring})` }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-4xl font-bold ${c.text}`}>{score}</span>
-          <span className="text-slate-500 text-xs">/ 100</span>
+          <span className={`font-mono text-5xl font-medium ${c.text}`}>{score}</span>
+          <span className="font-mono text-stardust text-xs">/ 100</span>
         </div>
       </div>
 
-      <div className={`mt-4 px-4 py-1.5 rounded-full text-sm font-bold tracking-wide ${c.text} border ${c.border}`}>
+      <div className={`mt-4 px-4 py-1.5 rounded-full font-mono text-xs uppercase tracking-widest ${c.text} border ${c.border}`}>
         {level}
       </div>
 
-      <div className="mt-4 w-full text-xs text-slate-500 text-center space-y-0.5">
+      <div className="mt-4 w-full font-mono text-[10px] tracking-wider text-stardust text-center space-y-1">
         <div className="flex justify-between">
           <span className="text-green-500">LOW</span>
           <span className="text-yellow-500">MEDIUM</span>

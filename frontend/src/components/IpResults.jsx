@@ -26,7 +26,7 @@ export default function IpResults({ ips }) {
           <div
             key={i}
             className={`p-3 rounded-lg border text-sm ${
-              anyFlagged ? 'bg-red-500/10 border-red-500/30' : 'bg-slate-900 border-slate-800'
+              anyFlagged ? 'bg-red-500/10 border-red-500/30' : 'bg-black/40 border-white/10'
             }`}
           >
             <div className="flex items-center gap-2 mb-2">
