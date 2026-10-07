@@ -1,5 +1,8 @@
 import aiohttp
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("ABUSEIPDB_API_KEY", "")
 BASE_URL = "https://api.abuseipdb.com/api/v2"
@@ -38,5 +41,6 @@ async def check_ip(session: aiohttp.ClientSession, ip: str) -> dict:
                 "last_reported": d.get("lastReportedAt", ""),
                 "flagged": score >= 25,
             }
-    except Exception as e:
-        return {"status": "error", "ip": ip, "error": str(e)}
+    except Exception:
+        logger.exception("AbuseIPDB lookup failed for %s", ip)
+        return {"status": "error", "ip": ip, "error": "AbuseIPDB lookup failed"}

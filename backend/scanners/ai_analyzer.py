@@ -7,8 +7,11 @@ Microservice API:
   → { threat_type, threat_level, confidence, scores, ... }
 """
 
+import logging
 import os
 import aiohttp
+
+logger = logging.getLogger(__name__)
 
 ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "https://ml.maildefender.xyz")
 
@@ -189,8 +192,9 @@ async def analyze_email(parsed_email: dict) -> dict:
                     return _error(f"ML service returned {resp.status}: {text[:200]}")
                 ml = await resp.json()
 
-    except Exception as exc:
-        return _error(str(exc))
+    except Exception:
+        logger.exception("AI analyzer request to ML service failed")
+        return _error("ML service unavailable")
 
     threat_type = ml.get("threat_type", "legitimate")
     confidence  = ml.get("confidence", 0.0)

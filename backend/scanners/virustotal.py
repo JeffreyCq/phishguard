@@ -1,7 +1,10 @@
 import aiohttp
 import base64
+import logging
 import os
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("VIRUSTOTAL_API_KEY", "")
 BASE_URL = "https://www.virustotal.com/api/v3"
@@ -46,8 +49,9 @@ async def scan_url(session: aiohttp.ClientSession, url: str) -> dict:
                 "total": sum(stats.values()),
                 "flagged": stats.get("malicious", 0) > 0 or stats.get("suspicious", 0) > 2,
             }
-    except Exception as e:
-        return {"status": "error", "url": url, "error": str(e)}
+    except Exception:
+        logger.exception("VirusTotal URL lookup failed for %s", url)
+        return {"status": "error", "url": url, "error": "VirusTotal lookup failed"}
 
 
 async def scan_ip(session: aiohttp.ClientSession, ip: str) -> dict:
@@ -76,5 +80,6 @@ async def scan_ip(session: aiohttp.ClientSession, ip: str) -> dict:
                 "as_owner": attrs.get("as_owner", "Unknown"),
                 "flagged": stats.get("malicious", 0) > 0,
             }
-    except Exception as e:
-        return {"status": "error", "ip": ip, "error": str(e)}
+    except Exception:
+        logger.exception("VirusTotal IP lookup failed for %s", ip)
+        return {"status": "error", "ip": ip, "error": "VirusTotal lookup failed"}

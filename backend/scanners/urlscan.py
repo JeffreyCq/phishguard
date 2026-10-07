@@ -1,6 +1,9 @@
 import aiohttp
 import asyncio
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("URLSCAN_API_KEY", "")
 BASE_URL = "https://urlscan.io/api/v1"
@@ -56,5 +59,6 @@ async def scan_url(session: aiohttp.ClientSession, url: str) -> dict:
                 "country": page.get("country", ""),
                 "screenshot": f"https://urlscan.io/screenshots/{uuid}.png",
             }
-    except Exception as e:
-        return {"status": "error", "url": url, "error": str(e)}
+    except Exception:
+        logger.exception("urlscan lookup failed for %s", url)
+        return {"status": "error", "url": url, "error": "urlscan lookup failed"}
