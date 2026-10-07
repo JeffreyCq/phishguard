@@ -14,8 +14,8 @@ services:
       - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY}
       - URLSCAN_API_KEY=${URLSCAN_API_KEY}
       - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY}
-      # Public REST API key
-      - PUBLIC_API_KEY=${PUBLIC_API_KEY}
+      # Enables /admin/* (issue API keys, export feedback)
+      - ADMIN_SECRET=${ADMIN_SECRET}
       # SMTP outbound — needed to send analysis reply emails
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT:-587}

@@ -354,7 +354,7 @@ async def public_scan(
     ),
     x_api_key: Optional[str] = Header(
         default=None,
-        description="Your API key. Set PUBLIC_API_KEY on the server to enable this endpoint.",
+        description="Your API key. Issue one with POST /admin/keys (requires ADMIN_SECRET on the server).",
     ),
 ):
     f"""
@@ -382,7 +382,7 @@ async def public_scan_json(
     request: Request,
     x_api_key: Optional[str] = Header(
         default=None,
-        description="Your API key. Set PUBLIC_API_KEY on the server to enable this endpoint.",
+        description="Your API key. Issue one with POST /admin/keys (requires ADMIN_SECRET on the server).",
     ),
 ):
     f"""
