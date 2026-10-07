@@ -130,6 +130,8 @@ curl -X POST http://localhost:3000/api/v1/scan \
   -F "raw_email=<suspicious.eml"
 ```
 
+If you would rather send JSON (handy for webhooks), `POST /api/v1/scan-json` takes the same key and a JSON body with a `raw_email` field.
+
 Keys are stored hashed and rate limited per day (1,000 by default). The response includes the score, level, verdict, tactics, red flags, per-class ML probabilities and the SPF / DKIM / DMARC results. Run the app and open `/docs` for the full schema.
 
 ## Layout
