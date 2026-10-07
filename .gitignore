@@ -30,3 +30,6 @@ Thumbs.db
 ml/model/
 ml/data/raw/
 ml/data/processed/
+
+# Local test fixtures (contain real email headers)
+test_email.txt
