@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: maildefender
+data:
+  ML_SERVICE_URL: https://ml.maildefender.xyz
+  SMTP_PORT: "587"
+  SMTP_USE_TLS: "true"
+  SMTP_LISTEN_HOST: 0.0.0.0
+  SMTP_LISTEN_PORT: "2525"

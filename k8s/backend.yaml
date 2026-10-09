@@ -22,13 +22,12 @@ spec:
               name: http
             - containerPort: 2525
               name: smtp
-          env:
-            - name: ML_SERVICE_URL
-              value: https://ml.maildefender.xyz
-            - name: SMTP_LISTEN_HOST
-              value: 0.0.0.0
-            - name: SMTP_LISTEN_PORT
-              value: "2525"
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secrets
+                optional: true
           readinessProbe:
             httpGet:
               path: /health
